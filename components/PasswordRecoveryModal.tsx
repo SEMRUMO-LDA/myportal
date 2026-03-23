@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, CheckCircle, AlertCircle, ArrowLeft, Key, MessageCircle, User } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
+import { supabaseAdmin } from '../services/supabaseAdminClient';
 import { wassengerService } from '../services/wassengerService';
 
 interface PasswordRecoveryModalProps {
@@ -16,6 +17,8 @@ const PasswordRecoveryModal: React.FC<PasswordRecoveryModalProps> = ({ isOpen, o
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  const [whatsappWarning, setWhatsappWarning] = useState('');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -26,16 +29,20 @@ const PasswordRecoveryModal: React.FC<PasswordRecoveryModalProps> = ({ isOpen, o
 
     setIsLoading(true);
     setErrorMessage('');
+    setWhatsappWarning('');
 
     try {
-      // Check if user exists with this employee code
+      // 1. FETCH USER — include both phone fields
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, name, phone, email, pin')
+        .select('id, name, phone, mobile_phone, email, auth_id')
         .eq('id', employeeCode.trim())
         .maybeSingle();
 
-      if (userError) throw userError;
+      if (userError) {
+        console.error('[PinRecovery] User fetch error:', userError);
+        throw new Error('Erro ao procurar colaborador. Tente novamente.');
+      }
 
       if (!userData) {
         setErrorMessage('Não existe nenhum colaborador com este ID.');
@@ -44,41 +51,94 @@ const PasswordRecoveryModal: React.FC<PasswordRecoveryModalProps> = ({ isOpen, o
         return;
       }
 
-      // Check if user has a phone number
-      if (!userData.phone || userData.phone.trim().length === 0) {
-        setErrorMessage('Este colaborador não tem um número de telemóvel registado. Por favor, contacte os Recursos Humanos.');
+      // 2. RESOLVE PHONE NUMBER — try phone first, then mobile_phone
+      const userPhone = userData.phone?.trim() || (userData as any).mobile_phone?.trim() || '';
+      
+      if (!userPhone) {
+        setErrorMessage('Este colaborador não tem um número de telemóvel registado. Contacte os Recursos Humanos.');
         setStep('error');
         setIsLoading(false);
         return;
       }
 
-      // Reset PIN to default value (1111) for recovery
-      const defaultPin = '1111';
+      // 3. CHECK AUTH — user must be migrated to Supabase Auth
+      if (!userData.auth_id) {
+        setErrorMessage('Utilizador não migrado para o sistema de autenticação. Contacte os RH.');
+        setStep('error');
+        setIsLoading(false);
+        return;
+      }
 
-      // Update user's PIN to default value in database
+      // 4. GENERATE NEW PIN
+      const newPin = Math.floor(100000 + Math.random() * 900000).toString();
+      console.log('[PinRecovery] 🔐 New PIN generated for user', userData.id);
+
+      // 5. UPDATE SUPABASE AUTH PASSWORD
+      const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+        userData.auth_id,
+        { password: newPin }
+      );
+
+      if (authError) {
+        console.error('[PinRecovery] ❌ Auth update failed:', authError);
+        console.error('[PinRecovery] Error details:', {
+          message: authError.message,
+          status: authError.status,
+          code: authError.code
+        });
+
+        // Provide more specific error messages
+        if (authError.message?.includes('JWT') || authError.message?.includes('token')) {
+          throw new Error('Chave de administração inválida. Contacte o suporte técnico. (Código: AUTH_KEY_INVALID)');
+        }
+        if (authError.message?.includes('not found')) {
+          throw new Error('Utilizador não encontrado no sistema de autenticação. Contacte RH. (Código: USER_NOT_FOUND)');
+        }
+        if (authError.message?.includes('permission')) {
+          throw new Error('Permissões insuficientes. Contacte o suporte técnico. (Código: PERMISSION_DENIED)');
+        }
+
+        throw new Error(`Erro ao atualizar PIN: ${authError.message} (Código: AUTH_UPDATE_FAILED)`);
+      }
+      console.log('[PinRecovery] ✅ Supabase Auth password updated');
+
+      // 6. UPDATE PIN COLUMN + requires_new_pin FLAG IN USERS TABLE
+      // CRITICAL: Without updating the pin column, collaborator/kiosk login won't work
       const { error: updateError } = await supabase
         .from('users')
-        .update({
-          pin: defaultPin,
-          requires_new_pin: true // Force user to change PIN on next login
+        .update({ 
+          pin: newPin,
+          requires_new_pin: true 
         })
         .eq('id', userData.id);
 
       if (updateError) {
-        console.error('Error resetting PIN:', updateError);
-        throw new Error('Erro ao resetar o PIN. Por favor, tente novamente.');
+        console.error('[PinRecovery] ❌ Users table update failed:', updateError);
+        throw new Error('Erro ao atualizar dados do utilizador.');
       }
+      console.log('[PinRecovery] ✅ Users table updated (pin + requires_new_pin)');
 
-      // Format WhatsApp message with new default PIN
-      const message = `Olá ${userData.name}!\n\nOs seus dados de acesso ao SEMRUMO MyPortal são:\n\n🔑 *Password (PIN):* ${defaultPin}\n\nPara aceder, utilize o seu ID e o código PIN indicado. DEVERÁ TROCAR O PIN dentro da sua área reservada assim que possível.`;
+      // 7. SEND WHATSAPP MESSAGE (non-blocking — PIN reset succeeds even if WhatsApp fails)
+      const message = `🔐 *SEMRUMO MyPortal - Recuperação de PIN*\n\nOlá ${userData.name}!\n\nO seu PIN foi resetado com sucesso.\n\n🆔 *ID Colaborador:* ${userData.id}\n🔑 *Novo PIN:* ${newPin}\n\n⚠️ *IMPORTANTE:* Este PIN é temporário. Será obrigatório criar um novo PIN personalizado no próximo login.\n\n🔒 Por motivos de segurança, não partilhe este PIN com ninguém.`;
 
-      // Send WhatsApp message
-      await wassengerService.sendMessage(userData.phone, message);
+      try {
+        await wassengerService.loadConfig();
+        if (wassengerService.isConfigured()) {
+          await wassengerService.sendMessage(userPhone, message);
+          console.log('[PinRecovery] ✅ WhatsApp message sent to', userPhone);
+        } else {
+          console.warn('[PinRecovery] ⚠️ Wassenger not configured, skipping WhatsApp');
+          setWhatsappWarning('PIN resetado com sucesso, mas o WhatsApp não está configurado. Comunique o novo PIN manualmente.');
+        }
+      } catch (whatsappError: any) {
+        console.error('[PinRecovery] ⚠️ WhatsApp send failed (non-blocking):', whatsappError);
+        setWhatsappWarning('PIN resetado com sucesso, mas houve um erro ao enviar o WhatsApp. Comunique o novo PIN manualmente.');
+      }
 
       setStep('success');
     } catch (error: any) {
-      console.error('Password recovery error:', error);
-      setErrorMessage(error.message || 'Erro ao enviar mensagem WhatsApp. Por favor, contacte os Recursos Humanos.');
+      console.error('[PinRecovery] ❌ Recovery failed:', error);
+      setErrorMessage(error.message || 'Erro na recuperação de PIN. Contacte os Recursos Humanos.');
       setStep('error');
     } finally {
       setIsLoading(false);
@@ -89,6 +149,7 @@ const PasswordRecoveryModal: React.FC<PasswordRecoveryModalProps> = ({ isOpen, o
     setStep('input');
     setEmployeeCode('');
     setErrorMessage('');
+    setWhatsappWarning('');
     setIsLoading(false);
   };
 
@@ -187,17 +248,33 @@ const PasswordRecoveryModal: React.FC<PasswordRecoveryModalProps> = ({ isOpen, o
               </div>
 
               <div>
-                <h3 className="text-2xl font-black text-gray-900 mb-2">Mensagem Enviada!</h3>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">
+                  {whatsappWarning ? 'PIN Resetado!' : 'Mensagem Enviada!'}
+                </h3>
                 <p className="text-gray-600 leading-relaxed">
-                  Enviámos os seus dados de acesso via <span className="font-bold text-green-600">WhatsApp</span>.
+                  {whatsappWarning 
+                    ? 'O PIN foi resetado com sucesso.' 
+                    : <>Enviámos os seus dados de acesso via <span className="font-bold text-green-600">WhatsApp</span>.</>
+                  }
                 </p>
               </div>
+
+              {whatsappWarning && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <p className="text-sm text-amber-800 font-medium">
+                    ⚠️ {whatsappWarning}
+                  </p>
+                </div>
+              )}
 
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                 <p className="text-sm text-gray-700">
                   <span className="font-bold">✅ Próximos passos:</span>
                   <br />
-                  1. Verifique as suas mensagens WhatsApp
+                  {whatsappWarning 
+                    ? '1. Comunique o novo PIN ao colaborador pessoalmente' 
+                    : '1. Verifique as suas mensagens WhatsApp'
+                  }
                   <br />
                   2. Utilize o ID e código PIN recebidos
                   <br />

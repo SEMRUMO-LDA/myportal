@@ -25,6 +25,8 @@ class SmartPollingService {
 
   private isUserActive = true;
   private lastActivity = Date.now();
+  private idleCheckInterval: any = null;
+  private eventListeners: Array<{ event: string; handler: any }> = [];
   private currentInterval = this.config.activeInterval;
   private pollingTimer: NodeJS.Timeout | null = null;
   private lastDataHash: string = '';
@@ -57,10 +59,12 @@ class SmartPollingService {
 
     events.forEach(event => {
       document.addEventListener(event, handleActivity, { passive: true });
+      // Store for cleanup
+      this.eventListeners.push({ event, handler: handleActivity });
     });
 
-    // Check for idle every 30 seconds
-    setInterval(() => {
+    // Check for idle every 30 seconds - WITH CLEANUP
+    this.idleCheckInterval = setInterval(() => {
       const idleTime = Date.now() - this.lastActivity;
       if (idleTime > 60000 && this.isUserActive) { // 1 minute idle
         this.isUserActive = false;
@@ -73,15 +77,7 @@ class SmartPollingService {
    * Setup page visibility detection
    */
   private setupVisibilityDetection() {
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        // Page is hidden, reduce polling
-        this.pause();
-      } else {
-        // Page is visible again
-        this.resume();
-      }
-    });
+    document.addEventListener('visibilitychange', this.handleVisibilityChange);
   }
 
   /**
@@ -274,6 +270,44 @@ class SmartPollingService {
     this.consecutiveNoChanges = 0;
     this.currentInterval = this.config.activeInterval;
     this.poll();
+  }
+
+  /**
+   * Cleanup all timers and event listeners
+   * CRITICAL: Must be called on logout or unmount
+   */
+  cleanup() {
+    console.log('[SmartPolling] Cleaning up timers and listeners');
+
+    // Clear idle check interval
+    if (this.idleCheckInterval) {
+      clearInterval(this.idleCheckInterval);
+      this.idleCheckInterval = null;
+    }
+
+    // Clear polling timer
+    if (this.pollingTimer) {
+      clearTimeout(this.pollingTimer);
+      this.pollingTimer = null;
+    }
+
+    // Remove all event listeners
+    this.eventListeners.forEach(({ event, handler }) => {
+      document.removeEventListener(event, handler);
+    });
+    this.eventListeners = [];
+
+    // Remove visibility listener
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+  }
+
+  // Store visibility change handler for cleanup
+  private handleVisibilityChange = () => {
+    if (document.hidden) {
+      this.pause();
+    } else {
+      this.resume();
+    }
   }
 }
 

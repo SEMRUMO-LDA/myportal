@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Test Login</title></head>
+<body>
+<h1>Login Test</h1>
+<p>Copia isto para Console do browser na página do login</p>
+<pre id="code">
+// TEST: Simular clique no botão de login
+(async () => {
+  console.clear();
+  console.log('🔍 Test Login Flow...\n');
+  
+  // Capturar o estado do botão
+  const btn = document.querySelector('button');
+  console.log('Botão encontrado:', btn ? 'Sim' : 'Não');
+  console.log('Texto do botão:', btn?.textContent);
+  console.log('Disabled?', btn?.disabled);
+  
+  // Tentar ver React state
+  const reactRoot = document.querySelector('#root');
+  if (reactRoot && reactRoot._reactRootContainer) {
+    console.log('React está montado');
+  }
+  
+  console.log('\nA procurar por estados de loading...');
+  console.log('localStorage:', Object.keys(localStorage));
+  console.log('sessionStorage:', Object.keys(sessionStorage));
+})();
+</pre>
+</body></html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Debug Sessão Supabase</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+        .ok { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        pre { background: white; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug de Sessão - MYPORTAL</h1>
+    <div id="output">Carregando...</div>
+
+    <script type="module">
+        const output = document.getElementById('output');
+        let html = '';
+
+        // 1. Check BUILD_VERSION
+        const buildVersion = localStorage.getItem('app_build_version');
+        html += `<h2>1. Cache Busting</h2>`;
+        html += `<p>BUILD_VERSION: <strong>${buildVersion || '<span class="error">NOT SET</span>'}</strong></p>`;
+        html += `<p class="${buildVersion === '47' ? 'ok' : 'warning'}">`;
+        html += buildVersion === '47' ? '✅ Build 47 detected' : '⚠️  Old build or not set';
+        html += `</p>`;
+
+        // 2. Check localStorage keys
+        html += `<h2>2. localStorage Keys</h2>`;
+        html += `<ul>`;
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            const value = localStorage.getItem(key);
+            if (key && (key.includes('supabase') || key.includes('auth') || key.includes('sb-'))) {
+                html += `<li><strong>${key}</strong>: ${value.substring(0, 80)}...</li>`;
+            }
+        }
+        html += `</ul>`;
+
+        // 3. Try to get Supabase session
+        html += `<h2>3. Supabase Session</h2>`;
+
+        try {
+            const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+
+            const supabase = createClient(
+                'https://imfhacvrivasciftaujm.supabase.co',
+                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImltZmhhY3ZyaXZhc2NpZnRhdWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNTc0MjUsImV4cCI6MjA4NDczMzQyNX0.Y47GlWAZP-bObKVXKXRWvc93ljkA9-_ccqaCtvej_Bs',
+                {
+                    auth: {
+                        persistSession: true,
+                        autoRefreshToken: true,
+                        storage: window.localStorage
+                    }
+                }
+            );
+
+            const { data: { session }, error } = await supabase.auth.getSession();
+
+            if (error) {
+                html += `<p class="error">❌ ERROR: ${error.message}</p>`;
+            } else if (session) {
+                html += `<p class="ok">✅ SESSION FOUND!</p>`;
+                html += `<pre>${JSON.stringify({
+                    user_id: session.user.id,
+                    email: session.user.email,
+                    expires_at: new Date(session.expires_at * 1000).toLocaleString('pt-PT'),
+                    access_token: session.access_token.substring(0, 30) + '...'
+                }, null, 2)}</pre>`;
+            } else {
+                html += `<p class="warning">⚠️  NO SESSION - Precisa fazer login</p>`;
+            }
+
+        } catch (err) {
+            html += `<p class="error">❌ EXCEPTION: ${err.message}</p>`;
+        }
+
+        output.innerHTML = html;
+    </script>
+</body>
+</html>

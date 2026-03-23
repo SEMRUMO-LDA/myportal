@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test React Loading</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-box {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      margin: 20px 0;
+    }
+    .success { color: #10b981; font-weight: bold; }
+    .error { color: #ef4444; font-weight: bold; }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-box">
+    <h1>🔍 React App Diagnostic Test</h1>
+    <p>Este teste vai verificar se a app React está a carregar corretamente.</p>
+  </div>
+
+  <div class="test-box">
+    <h2>1️⃣ Teste de Conectividade ao Supabase</h2>
+    <div id="supabase-test">A testar...</div>
+    <button onclick="testSupabase()">Repetir Teste</button>
+  </div>
+
+  <div class="test-box">
+    <h2>2️⃣ Carregar Users</h2>
+    <div id="users-test">A testar...</div>
+    <button onclick="testUsers()">Repetir Teste</button>
+  </div>
+
+  <div class="test-box">
+    <h2>3️⃣ Ir para App Principal</h2>
+    <button onclick="window.location.href='/#/login'">Ir para Login</button>
+    <button onclick="window.location.href='/'">Ir para Home</button>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://imfhacvrivasciftaujm.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImltZmhhY3ZyaXZhc2NpZnRhdWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNTc0MjUsImV4cCI6MjA4NDczMzQyNX0.Y47GlWAZP-bObKVXKXRWvc93ljkA9-_ccqaCtvej_Bs';
+
+    async function testSupabase() {
+      const div = document.getElementById('supabase-test');
+      div.innerHTML = '⏳ A testar conectividade...';
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+
+        if (response.ok) {
+          div.innerHTML = '<span class="success">✅ Conectividade OK!</span>';
+        } else {
+          div.innerHTML = `<span class="error">❌ Erro: ${response.status} ${response.statusText}</span>`;
+        }
+      } catch (error) {
+        div.innerHTML = `<span class="error">❌ Erro de rede: ${error.message}</span>`;
+      }
+    }
+
+    async function testUsers() {
+      const div = document.getElementById('users-test');
+      div.innerHTML = '⏳ A carregar users...';
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/users?select=id,name,email&limit=10`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+
+        if (response.ok) {
+          const users = await response.json();
+          div.innerHTML = `
+            <span class="success">✅ ${users.length} utilizadores carregados!</span>
+            <ul style="margin-top: 10px; max-height: 200px; overflow-y: auto;">
+              ${users.map(u => `<li>${u.id} - ${u.name} (${u.email})</li>`).join('')}
+            </ul>
+          `;
+        } else {
+          div.innerHTML = `<span class="error">❌ Erro: ${response.status} ${response.statusText}</span>`;
+        }
+      } catch (error) {
+        div.innerHTML = `<span class="error">❌ Erro: ${error.message}</span>`;
+      }
+    }
+
+    // Auto-run tests on load
+    testSupabase();
+    testUsers();
+  </script>
+</body>
+</html>

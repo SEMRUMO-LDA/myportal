@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Picagem Rápida - SEMRUMO</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .status {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.loading {
+            background: #cfe2ff;
+            color: #084298;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            flex: 1;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        button:hover:not(:disabled) {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        button.entrada {
+            background: #28a745;
+        }
+
+        button.entrada:hover:not(:disabled) {
+            background: #218838;
+        }
+
+        button.saida {
+            background: #dc3545;
+        }
+
+        button.saida:hover:not(:disabled) {
+            background: #c82333;
+        }
+
+        .location-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .location-info strong {
+            color: #333;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: #667eea;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+
+        .clock-display {
+            font-size: 36px;
+            font-weight: bold;
+            color: #333;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">⏰</div>
+        <h1>Picagem Rápida</h1>
+        <p class="subtitle">SEMRUMO - Sistema de Ponto</p>
+
+        <div class="clock-display" id="clock">--:--:--</div>
+
+        <div class="status loading" id="sessionStatus">
+            <span class="spinner"></span> A verificar estado...
+        </div>
+
+        <div class="status loading" id="status">
+            <span class="spinner"></span> A obter localização GPS...
+        </div>
+
+        <div class="btn-group">
+            <button class="entrada" id="btnEntrada" disabled>
+                ✅ ENTRADA
+            </button>
+            <button class="saida" id="btnSaida" disabled>
+                🚪 SAÍDA
+            </button>
+        </div>
+
+        <div class="location-info" id="locationInfo" style="display:none;">
+            <strong>📍 Localização:</strong>
+            <div id="locationDetails">--</div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração
+        const SUPABASE_URL = 'https://imfhacvrivasciftaujm.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImltZmhhY3ZyaXZhc2NpZnRhdWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzcyODcwNTgsImV4cCI6MjA1Mjg2MzA1OH0.Qn_3ybulLKbSzGCXDEpSYxM4yR9RpAwwPy2hMv3wVuk';
+        const WEBHOOK_URL = 'https://imfhacvrivasciftaujm.supabase.co/functions/v1/whatsapp-webhook';
+
+        // Obter parâmetros da URL
+        const params = new URLSearchParams(window.location.search);
+        const phone = params.get('phone') || localStorage.getItem('userPhone');
+        const token = params.get('token');
+
+        // Estado
+        let userLocation = null;
+        let locationError = false;
+        let userId = null;
+        let currentSession = null;
+
+        // Relógio
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent =
+                now.toTimeString().split(' ')[0];
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Obter localização automaticamente
+        function getLocation() {
+            if (!navigator.geolocation) {
+                showError('GPS não suportado neste dispositivo');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    userLocation = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    };
+
+                    // Mostrar localização
+                    document.getElementById('locationInfo').style.display = 'block';
+                    document.getElementById('locationDetails').innerHTML = `
+                        Lat: ${userLocation.latitude.toFixed(6)}<br>
+                        Lng: ${userLocation.longitude.toFixed(6)}<br>
+                        Precisão: ${Math.round(userLocation.accuracy)}m
+                    `;
+
+                    // Ativar botões
+                    document.getElementById('btnEntrada').disabled = false;
+                    document.getElementById('btnSaida').disabled = false;
+
+                    // Atualizar status
+                    const statusEl = document.getElementById('status');
+                    statusEl.className = 'status success';
+                    statusEl.innerHTML = '✅ Localização obtida com sucesso!';
+
+                    // Guardar phone se veio na URL
+                    if (phone && phone !== localStorage.getItem('userPhone')) {
+                        localStorage.setItem('userPhone', phone);
+                    }
+                },
+                (error) => {
+                    let message = 'Erro ao obter localização';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            message = '❌ Permissão de GPS negada. Por favor, autorize o GPS.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            message = '❌ Localização indisponível. Verifique o GPS.';
+                            break;
+                        case error.TIMEOUT:
+                            message = '❌ Tempo esgotado ao obter localização.';
+                            break;
+                    }
+                    showError(message);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        function showError(message) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = 'status error';
+            statusEl.innerHTML = message;
+            locationError = true;
+        }
+
+        // Verificar estado da sessão
+        async function checkSessionStatus() {
+            const sessionStatusEl = document.getElementById('sessionStatus');
+
+            try {
+                if (!phone) {
+                    sessionStatusEl.className = 'status';
+                    sessionStatusEl.style.background = '#f0f0f0';
+                    sessionStatusEl.style.color = '#666';
+                    sessionStatusEl.innerHTML = 'ℹ️ Aguardando identificação';
+                    return;
+                }
+
+                // Obter userId do token
+                if (token) {
+                    try {
+                        const decoded = atob(token);
+                        userId = parseInt(decoded.split('-')[0]);
+                    } catch (e) {
+                        console.warn('Token inválido, mas pode continuar a picar', e);
+                    }
+                }
+
+                if (!userId) {
+                    // Sem token válido, mas pode picar normalmente
+                    sessionStatusEl.className = 'status';
+                    sessionStatusEl.style.background = '#f0f0f0';
+                    sessionStatusEl.style.color = '#666';
+                    sessionStatusEl.innerHTML = 'ℹ️ Pronto para picar';
+                    return;
+                }
+
+                // Buscar última picagem do dia
+                const today = new Date().toISOString().split('T')[0];
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/time_logs?user_id=eq.${userId}&date=eq.${today}&order=created_at.desc&limit=1`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao verificar estado');
+                }
+
+                const logs = await response.json();
+
+                if (logs && logs.length > 0) {
+                    const lastLog = logs[0];
+                    currentSession = lastLog;
+
+                    if (lastLog.clock_out) {
+                        // Sessão fechada
+                        sessionStatusEl.className = 'status';
+                        sessionStatusEl.style.background = '#fff3cd';
+                        sessionStatusEl.style.color = '#856404';
+                        sessionStatusEl.innerHTML = `🔴 Sessão Fechada<br><small>Última saída: ${new Date(lastLog.clock_out).toLocaleTimeString('pt-PT', {hour: '2-digit', minute: '2-digit'})}</small>`;
+                    } else if (lastLog.clock_in) {
+                        // Sessão aberta
+                        const entryTime = new Date(lastLog.clock_in);
+                        const now = new Date();
+                        const diff = Math.floor((now - entryTime) / 1000 / 60); // minutos
+                        const hours = Math.floor(diff / 60);
+                        const minutes = diff % 60;
+
+                        sessionStatusEl.className = 'status success';
+                        sessionStatusEl.innerHTML = `🟢 Sessão Aberta<br><small>Entrada: ${entryTime.toLocaleTimeString('pt-PT', {hour: '2-digit', minute: '2-digit'})} (${hours}h${minutes.toString().padStart(2, '0')}m)</small>`;
+                    }
+                } else {
+                    // Sem picagens hoje
+                    sessionStatusEl.className = 'status';
+                    sessionStatusEl.style.background = '#e8f4f8';
+                    sessionStatusEl.style.color = '#084298';
+                    sessionStatusEl.innerHTML = '⚪ Sem picagem hoje<br><small>Pode registar entrada</small>';
+                }
+            } catch (error) {
+                console.error('Erro ao verificar sessão:', error);
+                sessionStatusEl.className = 'status error';
+                sessionStatusEl.innerHTML = '⚠️ Erro ao verificar estado da sessão';
+            }
+        }
+
+        // Enviar picagem
+        async function sendClock(action) {
+            if (!userLocation) {
+                showError('Por favor, aguarde a localização GPS');
+                return;
+            }
+
+            if (!phone) {
+                showError('Número de telefone não identificado');
+                return;
+            }
+
+            // Desativar botões
+            document.getElementById('btnEntrada').disabled = true;
+            document.getElementById('btnSaida').disabled = true;
+
+            // Mostrar loading
+            const statusEl = document.getElementById('status');
+            statusEl.className = 'status loading';
+            statusEl.innerHTML = '<span class="spinner"></span> A enviar...';
+
+            try {
+                // Enviar para webhook como se fosse do WhatsApp
+                const response = await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        event: 'message:in:new',
+                        data: {
+                            fromNumber: phone,
+                            from: phone,
+                            body: action,
+                            latitude: userLocation.latitude,
+                            longitude: userLocation.longitude,
+                            type: 'location',
+                            locationName: `Via Web (Precisão: ${Math.round(userLocation.accuracy)}m)`
+                        }
+                    })
+                });
+
+                if (response.ok) {
+                    statusEl.className = 'status success';
+                    statusEl.innerHTML = `✅ ${action} registada com sucesso!`;
+
+                    // Atualizar estado da sessão
+                    await checkSessionStatus();
+
+                    // Reativar botões após 2 segundos
+                    setTimeout(() => {
+                        document.getElementById('btnEntrada').disabled = false;
+                        document.getElementById('btnSaida').disabled = false;
+                        statusEl.innerHTML = `✅ Pronto para nova picagem`;
+                    }, 2000);
+                } else {
+                    throw new Error('Erro ao enviar');
+                }
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.innerHTML = '❌ Erro ao enviar. Tente novamente.';
+
+                // Reativar botões
+                document.getElementById('btnEntrada').disabled = false;
+                document.getElementById('btnSaida').disabled = false;
+            }
+        }
+
+        // Event listeners
+        document.getElementById('btnEntrada').addEventListener('click', () => {
+            sendClock('ENTRADA');
+        });
+
+        document.getElementById('btnSaida').addEventListener('click', () => {
+            sendClock('SAIDA');
+        });
+
+        // Iniciar
+        checkSessionStatus();
+        getLocation();
+
+        // Atualizar estado da sessão a cada 30 segundos
+        setInterval(checkSessionStatus, 30000);
+
+        // Tentar novamente se falhar
+        document.getElementById('status').addEventListener('click', () => {
+            if (locationError) {
+                locationError = false;
+                document.getElementById('status').innerHTML = '<span class="spinner"></span> A obter localização GPS...';
+                document.getElementById('status').className = 'status loading';
+                getLocation();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Picagem - SEMRUMO</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: #667eea;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+
+        h1 { color: #333; margin-bottom: 10px; font-size: 28px; }
+        .subtitle { color: #666; margin-bottom: 30px; font-size: 14px; }
+
+        .clock {
+            font-size: 36px;
+            font-weight: bold;
+            color: #333;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .info {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+
+        .info.success { background: #d4edda; color: #155724; }
+        .info.error { background: #f8d7da; color: #721c24; }
+        .info.loading { background: #cfe2ff; color: #084298; }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        button {
+            flex: 1;
+            padding: 18px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+
+        button:disabled {
+            background: #ccc !important;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn-entrada {
+            background: #28a745;
+        }
+
+        .btn-entrada:hover:not(:disabled) {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .btn-saida {
+            background: #dc3545;
+        }
+
+        .btn-saida:hover:not(:disabled) {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .location {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+            display: none;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(0,0,0,.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .user-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">⏰</div>
+        <h1>Picagem Rápida</h1>
+        <p class="subtitle">SEMRUMO - Sistema de Ponto</p>
+
+        <div class="clock" id="clock">--:--:--</div>
+
+        <div class="info loading" id="status">
+            <span class="spinner"></span> A iniciar...
+        </div>
+
+        <div class="buttons">
+            <button class="btn-entrada" id="btnEntrada" disabled>
+                ✅ ENTRADA
+            </button>
+            <button class="btn-saida" id="btnSaida" disabled>
+                🚪 SAÍDA
+            </button>
+        </div>
+
+        <div class="location" id="location">
+            <strong>📍 Localização:</strong>
+            <div id="locationDetails"></div>
+        </div>
+
+        <div class="user-info" id="userInfo"></div>
+    </div>
+
+    <script>
+        // Config
+        const API_URL = 'https://imfhacvrivasciftaujm.supabase.co/rest/v1';
+        const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImltZmhhY3ZyaXZhc2NpZnRhdWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzcyODcwNTgsImV4cCI6MjA1Mjg2MzA1OH0.Qn_3ybulLKbSzGCXDEpSYxM4yR9RpAwwPy2hMv3wVuk';
+
+        // Get params
+        const params = new URLSearchParams(window.location.search);
+        const phone = params.get('phone');
+        const userName = params.get('name') || 'Utilizador';
+
+        // State
+        let userLocation = null;
+        let userId = null;
+
+        // Elements
+        const statusEl = document.getElementById('status');
+        const btnEntrada = document.getElementById('btnEntrada');
+        const btnSaida = document.getElementById('btnSaida');
+        const locationEl = document.getElementById('location');
+        const locationDetails = document.getElementById('locationDetails');
+
+        // Show user
+        document.getElementById('userInfo').innerHTML = `👤 ${decodeURIComponent(userName)}`;
+
+        // Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent = now.toTimeString().split(' ')[0];
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Status
+        function showStatus(msg, type = 'loading') {
+            statusEl.className = `info ${type}`;
+            statusEl.innerHTML = msg;
+        }
+
+        // Get GPS
+        async function getGPS() {
+            showStatus('<span class="spinner"></span> A obter GPS...', 'loading');
+
+            if (!navigator.geolocation) {
+                showStatus('❌ GPS não disponível', 'error');
+                return false;
+            }
+
+            return new Promise((resolve) => {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        userLocation = {
+                            lat: pos.coords.latitude,
+                            lng: pos.coords.longitude,
+                            acc: pos.coords.accuracy
+                        };
+
+                        locationEl.style.display = 'block';
+                        locationDetails.innerHTML = `
+                            Lat: ${userLocation.lat.toFixed(6)}<br>
+                            Lng: ${userLocation.lng.toFixed(6)}<br>
+                            Precisão: ${Math.round(userLocation.acc)}m
+                        `;
+
+                        showStatus('✅ GPS obtido! Pronto para picar.', 'success');
+                        btnEntrada.disabled = false;
+                        btnSaida.disabled = false;
+                        resolve(true);
+                    },
+                    (err) => {
+                        let msg = '❌ Erro ao obter GPS. ';
+                        if (err.code === 1) msg += 'Por favor, autorize o acesso.';
+                        else if (err.code === 2) msg += 'GPS indisponível.';
+                        else msg += 'Tempo esgotado.';
+                        showStatus(msg, 'error');
+                        resolve(false);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            });
+        }
+
+        // Get User ID
+        async function getUserId() {
+            if (!phone) {
+                showStatus('❌ Telefone não identificado', 'error');
+                return null;
+            }
+
+            try {
+                showStatus('<span class="spinner"></span> A identificar utilizador...', 'loading');
+
+                let url = `${API_URL}/users?phone=eq.${phone}&select=id,name`;
+                let res = await fetch(url, {
+                    headers: {
+                        'apikey': API_KEY,
+                        'Authorization': `Bearer ${API_KEY}`
+                    }
+                });
+
+                let data = await res.json();
+
+                if (!data || data.length === 0) {
+                    // Try without prefix
+                    const cleanPhone = phone.replace(/^\+?351/, '');
+                    url = `${API_URL}/users?phone=eq.${cleanPhone}&select=id,name`;
+                    res = await fetch(url, {
+                        headers: {
+                            'apikey': API_KEY,
+                            'Authorization': `Bearer ${API_KEY}`
+                        }
+                    });
+                    data = await res.json();
+                }
+
+                if (!data || data.length === 0) {
+                    showStatus('❌ Utilizador não encontrado', 'error');
+                    return null;
+                }
+
+                return data[0].id;
+            } catch (err) {
+                console.error('Error:', err);
+                showStatus('❌ Erro ao identificar utilizador', 'error');
+                return null;
+            }
+        }
+
+        // Register clock
+        async function registrar(action) {
+            if (!userLocation) {
+                showStatus('❌ Aguarde o GPS', 'error');
+                return;
+            }
+
+            if (!userId) {
+                showStatus('❌ Utilizador não identificado', 'error');
+                return;
+            }
+
+            btnEntrada.disabled = true;
+            btnSaida.disabled = true;
+            showStatus('<span class="spinner"></span> A registar...', 'loading');
+
+            try {
+                const now = new Date().toISOString();
+                const today = now.split('T')[0];
+                const location = `${userLocation.lat},${userLocation.lng}`;
+
+                if (action === 'ENTRADA') {
+                    // Create new record
+                    const res = await fetch(`${API_URL}/time_logs`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': API_KEY,
+                            'Authorization': `Bearer ${API_KEY}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify({
+                            user_id: userId,
+                            date: today,
+                            clock_in: now,
+                            location_in: location,
+                            created_at: now,
+                            updated_at: now
+                        })
+                    });
+
+                    if (!res.ok) throw new Error('Erro ao registar');
+
+                    showStatus(`✅ ENTRADA registada!<br><small>${new Date().toLocaleTimeString('pt-PT')}</small>`, 'success');
+                } else {
+                    // Find open session
+                    const findRes = await fetch(
+                        `${API_URL}/time_logs?user_id=eq.${userId}&date=eq.${today}&clock_out=is.null&order=created_at.desc&limit=1`,
+                        {
+                            headers: {
+                                'apikey': API_KEY,
+                                'Authorization': `Bearer ${API_KEY}`
+                            }
+                        }
+                    );
+
+                    const logs = await findRes.json();
+
+                    if (!logs || logs.length === 0) {
+                        showStatus('❌ Sem entrada registada', 'error');
+                        btnEntrada.disabled = false;
+                        btnSaida.disabled = false;
+                        return;
+                    }
+
+                    // Update with clock out
+                    const updateRes = await fetch(
+                        `${API_URL}/time_logs?id=eq.${logs[0].id}`,
+                        {
+                            method: 'PATCH',
+                            headers: {
+                                'apikey': API_KEY,
+                                'Authorization': `Bearer ${API_KEY}`,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=representation'
+                            },
+                            body: JSON.stringify({
+                                clock_out: now,
+                                location_out: location,
+                                updated_at: now
+                            })
+                        }
+                    );
+
+                    if (!updateRes.ok) throw new Error('Erro ao registar');
+
+                    showStatus(`✅ SAÍDA registada!<br><small>${new Date().toLocaleTimeString('pt-PT')}</small>`, 'success');
+                }
+
+                // Re-enable after 3s
+                setTimeout(() => {
+                    btnEntrada.disabled = false;
+                    btnSaida.disabled = false;
+                }, 3000);
+
+            } catch (err) {
+                console.error('Error:', err);
+                showStatus('❌ Erro ao registar. Tente novamente.', 'error');
+                btnEntrada.disabled = false;
+                btnSaida.disabled = false;
+            }
+        }
+
+        // Event listeners
+        btnEntrada.onclick = () => registrar('ENTRADA');
+        btnSaida.onclick = () => registrar('SAIDA');
+
+        // Init
+        async function init() {
+            userId = await getUserId();
+            if (userId) {
+                await getGPS();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

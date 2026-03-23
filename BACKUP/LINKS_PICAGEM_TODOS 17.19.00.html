@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Links de Picagem - SEMRUMO</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .search-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .user-card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .user-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+
+        .user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .user-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .user-id {
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .user-phone {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .url-box {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 5px;
+            word-break: break-all;
+            font-size: 12px;
+            font-family: monospace;
+            margin-bottom: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .instructions {
+            background: #e8f4f8;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .instructions h2 {
+            color: #084298;
+            margin-bottom: 15px;
+        }
+
+        .instructions ul {
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        @media print {
+            .search-box, .btn-group { display: none; }
+            .user-card { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔗 Links de Picagem Rápida</h1>
+        <p>SEMRUMO - Sistema de Ponto</p>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-number">76</div>
+            <div class="stat-label">Colaboradores</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">100%</div>
+            <div class="stat-label">Com GPS</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">1-Click</div>
+            <div class="stat-label">Picagem Rápida</div>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <h2>📱 Como Usar os Links</h2>
+        <ul>
+            <li><strong>Enviar por WhatsApp:</strong> Copie o link e envie para o colaborador</li>
+            <li><strong>Guardar Favoritos:</strong> Colaborador clica no link e adiciona aos favoritos</li>
+            <li><strong>Adicionar ao Ecrã Inicial:</strong> iPhone: "Adicionar ao Ecrã Principal" | Android: "Adicionar ao Ecrã Inicial"</li>
+            <li><strong>Testar:</strong> Clique em "Testar Link" para abrir e experimentar</li>
+            <li><strong>Copiar:</strong> Use o botão "Copiar URL" para copiar rapidamente</li>
+        </ul>
+    </div>
+
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 Pesquisar por nome, telefone ou ID...">
+    </div>
+
+    <div id="userList">
+
+        <div class="user-card" data-search="adriana dos santos silva 967752063 10052">
+            <div class="user-header">
+                <div class="user-name">👤 Adriana dos Santos Silva</div>
+                <div class="user-id">ID: 10052</div>
+            </div>
+            <div class="user-phone">📱 967752063</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=967752063&name=Adriana%20dos%20Santos%20Silva</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=967752063&name=Adriana%20dos%20Santos%20Silva" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=967752063&name=Adriana%20dos%20Santos%20Silva', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('967752063', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=967752063&name=Adriana%20dos%20Santos%20Silva', 'Adriana dos Santos Silva', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="alexander bryan curado de figueiredo +351962929356 37">
+            <div class="user-header">
+                <div class="user-name">👤 Alexander Bryan Curado De Figueiredo</div>
+                <div class="user-id">ID: 37</div>
+            </div>
+            <div class="user-phone">📱 +351962929356</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351962929356&name=Alexander%20Bryan%20Curado%20De%20Figueiredo</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351962929356&name=Alexander%20Bryan%20Curado%20De%20Figueiredo" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351962929356&name=Alexander%20Bryan%20Curado%20De%20Figueiredo', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351962929356', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351962929356&name=Alexander%20Bryan%20Curado%20De%20Figueiredo', 'Alexander Bryan Curado De Figueiredo', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="alice costa da silva +351969332820 38">
+            <div class="user-header">
+                <div class="user-name">👤 Alice Costa da Silva</div>
+                <div class="user-id">ID: 38</div>
+            </div>
+            <div class="user-phone">📱 +351969332820</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351969332820&name=Alice%20Costa%20da%20Silva</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351969332820&name=Alice%20Costa%20da%20Silva" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351969332820&name=Alice%20Costa%20da%20Silva', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351969332820', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351969332820&name=Alice%20Costa%20da%20Silva', 'Alice Costa da Silva', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="ana lucia ferreira da silva guerreiro luz 961054315 124">
+            <div class="user-header">
+                <div class="user-name">👤 Ana Lucia Ferreira da Silva Guerreiro Luz</div>
+                <div class="user-id">ID: 124</div>
+            </div>
+            <div class="user-phone">📱 961054315</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=961054315&name=Ana%20Lucia%20Ferreira%20da%20Silva%20Guerreiro%20Luz</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=961054315&name=Ana%20Lucia%20Ferreira%20da%20Silva%20Guerreiro%20Luz" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=961054315&name=Ana%20Lucia%20Ferreira%20da%20Silva%20Guerreiro%20Luz', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('961054315', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=961054315&name=Ana%20Lucia%20Ferreira%20da%20Silva%20Guerreiro%20Luz', 'Ana Lucia Ferreira da Silva Guerreiro Luz', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="ana raquel oliveira batista lança 939487700 10049">
+            <div class="user-header">
+                <div class="user-name">👤 Ana Raquel Oliveira Batista Lança</div>
+                <div class="user-id">ID: 10049</div>
+            </div>
+            <div class="user-phone">📱 939487700</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=939487700&name=Ana%20Raquel%20Oliveira%20Batista%20Lan%C3%A7a</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=939487700&name=Ana%20Raquel%20Oliveira%20Batista%20Lan%C3%A7a" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=939487700&name=Ana%20Raquel%20Oliveira%20Batista%20Lan%C3%A7a', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('939487700', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=939487700&name=Ana%20Raquel%20Oliveira%20Batista%20Lan%C3%A7a', 'Ana Raquel Oliveira Batista Lança', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="anabela mendes machado 962914573 10051">
+            <div class="user-header">
+                <div class="user-name">👤 Anabela Mendes Machado</div>
+                <div class="user-id">ID: 10051</div>
+            </div>
+            <div class="user-phone">📱 962914573</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=962914573&name=Anabela%20Mendes%20Machado</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=962914573&name=Anabela%20Mendes%20Machado" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=962914573&name=Anabela%20Mendes%20Machado', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('962914573', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=962914573&name=Anabela%20Mendes%20Machado', 'Anabela Mendes Machado', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="andreia do carmo henriques +351964873528 17">
+            <div class="user-header">
+                <div class="user-name">👤 Andreia do Carmo Henriques</div>
+                <div class="user-id">ID: 17</div>
+            </div>
+            <div class="user-phone">📱 +351964873528</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351964873528&name=Andreia%20do%20Carmo%20Henriques</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351964873528&name=Andreia%20do%20Carmo%20Henriques" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351964873528&name=Andreia%20do%20Carmo%20Henriques', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351964873528', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351964873528&name=Andreia%20do%20Carmo%20Henriques', 'Andreia do Carmo Henriques', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="andreia filipa oliveira marques +351933180165 11">
+            <div class="user-header">
+                <div class="user-name">👤 Andreia Filipa Oliveira Marques</div>
+                <div class="user-id">ID: 11</div>
+            </div>
+            <div class="user-phone">📱 +351933180165</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351933180165&name=Andreia%20Filipa%20Oliveira%20Marques</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351933180165&name=Andreia%20Filipa%20Oliveira%20Marques" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351933180165&name=Andreia%20Filipa%20Oliveira%20Marques', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351933180165', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351933180165&name=Andreia%20Filipa%20Oliveira%20Marques', 'Andreia Filipa Oliveira Marques', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="andreia gabriela carreira pereira 926945543 10053">
+            <div class="user-header">
+                <div class="user-name">👤 Andreia Gabriela Carreira Pereira</div>
+                <div class="user-id">ID: 10053</div>
+            </div>
+            <div class="user-phone">📱 926945543</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=926945543&name=Andreia%20Gabriela%20Carreira%20Pereira</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=926945543&name=Andreia%20Gabriela%20Carreira%20Pereira" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=926945543&name=Andreia%20Gabriela%20Carreira%20Pereira', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('926945543', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=926945543&name=Andreia%20Gabriela%20Carreira%20Pereira', 'Andreia Gabriela Carreira Pereira', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="beatriz rosa duarte  91">
+            <div class="user-header">
+                <div class="user-name">👤 Beatriz Rosa Duarte</div>
+                <div class="user-id">ID: 91</div>
+            </div>
+            <div class="user-phone">📱 </div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Beatriz%20Rosa%20Duarte</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Beatriz%20Rosa%20Duarte" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Beatriz%20Rosa%20Duarte', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Beatriz%20Rosa%20Duarte', 'Beatriz Rosa Duarte', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="bijay neupane 920234265 10046">
+            <div class="user-header">
+                <div class="user-name">👤 Bijay Neupane</div>
+                <div class="user-id">ID: 10046</div>
+            </div>
+            <div class="user-phone">📱 920234265</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=920234265&name=Bijay%20Neupane</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=920234265&name=Bijay%20Neupane" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=920234265&name=Bijay%20Neupane', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('920234265', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=920234265&name=Bijay%20Neupane', 'Bijay Neupane', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="bruna danielly pereira da silva 925682922 10042">
+            <div class="user-header">
+                <div class="user-name">👤 Bruna Danielly Pereira da Silva</div>
+                <div class="user-id">ID: 10042</div>
+            </div>
+            <div class="user-phone">📱 925682922</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=925682922&name=Bruna%20Danielly%20Pereira%20da%20Silva</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=925682922&name=Bruna%20Danielly%20Pereira%20da%20Silva" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=925682922&name=Bruna%20Danielly%20Pereira%20da%20Silva', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('925682922', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=925682922&name=Bruna%20Danielly%20Pereira%20da%20Silva', 'Bruna Danielly Pereira da Silva', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="bruno miguel de brito cristina  10025">
+            <div class="user-header">
+                <div class="user-name">👤 Bruno Miguel de Brito Cristina</div>
+                <div class="user-id">ID: 10025</div>
+            </div>
+            <div class="user-phone">📱 </div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Bruno%20Miguel%20de%20Brito%20Cristina</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Bruno%20Miguel%20de%20Brito%20Cristina" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Bruno%20Miguel%20de%20Brito%20Cristina', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Bruno%20Miguel%20de%20Brito%20Cristina', 'Bruno Miguel de Brito Cristina', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="carlos manuel salgado rodrigues +351937717955 10015">
+            <div class="user-header">
+                <div class="user-name">👤 Carlos Manuel Salgado Rodrigues</div>
+                <div class="user-id">ID: 10015</div>
+            </div>
+            <div class="user-phone">📱 +351937717955</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351937717955&name=Carlos%20Manuel%20Salgado%20Rodrigues</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351937717955&name=Carlos%20Manuel%20Salgado%20Rodrigues" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351937717955&name=Carlos%20Manuel%20Salgado%20Rodrigues', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351937717955', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351937717955&name=Carlos%20Manuel%20Salgado%20Rodrigues', 'Carlos Manuel Salgado Rodrigues', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="cláudio manuel martins cabrita da silva +351965005418 65">
+            <div class="user-header">
+                <div class="user-name">👤 Cláudio Manuel Martins Cabrita da Silva</div>
+                <div class="user-id">ID: 65</div>
+            </div>
+            <div class="user-phone">📱 +351965005418</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351965005418&name=Cl%C3%A1udio%20Manuel%20Martins%20Cabrita%20da%20Silva</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351965005418&name=Cl%C3%A1udio%20Manuel%20Martins%20Cabrita%20da%20Silva" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351965005418&name=Cl%C3%A1udio%20Manuel%20Martins%20Cabrita%20da%20Silva', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351965005418', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351965005418&name=Cl%C3%A1udio%20Manuel%20Martins%20Cabrita%20da%20Silva', 'Cláudio Manuel Martins Cabrita da Silva', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="cristinel harabagiu 964285544 10038">
+            <div class="user-header">
+                <div class="user-name">👤 Cristinel Harabagiu</div>
+                <div class="user-id">ID: 10038</div>
+            </div>
+            <div class="user-phone">📱 964285544</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=964285544&name=Cristinel%20Harabagiu</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=964285544&name=Cristinel%20Harabagiu" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=964285544&name=Cristinel%20Harabagiu', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('964285544', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=964285544&name=Cristinel%20Harabagiu', 'Cristinel Harabagiu', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="daniel alexandre vale de ovelha baltazar 939621477 10040">
+            <div class="user-header">
+                <div class="user-name">👤 Daniel Alexandre Vale de Ovelha Baltazar</div>
+                <div class="user-id">ID: 10040</div>
+            </div>
+            <div class="user-phone">📱 939621477</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=939621477&name=Daniel%20Alexandre%20Vale%20de%20Ovelha%20Baltazar</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=939621477&name=Daniel%20Alexandre%20Vale%20de%20Ovelha%20Baltazar" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=939621477&name=Daniel%20Alexandre%20Vale%20de%20Ovelha%20Baltazar', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('939621477', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=939621477&name=Daniel%20Alexandre%20Vale%20de%20Ovelha%20Baltazar', 'Daniel Alexandre Vale de Ovelha Baltazar', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="daniel filipe ferreira dias +351967331800 66">
+            <div class="user-header">
+                <div class="user-name">👤 Daniel Filipe Ferreira Dias</div>
+                <div class="user-id">ID: 66</div>
+            </div>
+            <div class="user-phone">📱 +351967331800</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967331800&name=Daniel%20Filipe%20Ferreira%20Dias</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967331800&name=Daniel%20Filipe%20Ferreira%20Dias" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967331800&name=Daniel%20Filipe%20Ferreira%20Dias', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351967331800', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967331800&name=Daniel%20Filipe%20Ferreira%20Dias', 'Daniel Filipe Ferreira Dias', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="daniela filipa de lima esteves 967077300 10024">
+            <div class="user-header">
+                <div class="user-name">👤 Daniela Filipa de Lima Esteves</div>
+                <div class="user-id">ID: 10024</div>
+            </div>
+            <div class="user-phone">📱 967077300</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=967077300&name=Daniela%20Filipa%20de%20Lima%20Esteves</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=967077300&name=Daniela%20Filipa%20de%20Lima%20Esteves" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=967077300&name=Daniela%20Filipa%20de%20Lima%20Esteves', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('967077300', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=967077300&name=Daniela%20Filipa%20de%20Lima%20Esteves', 'Daniela Filipa de Lima Esteves', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="david joão dourado de sousa +351915618606 67">
+            <div class="user-header">
+                <div class="user-name">👤 David João Dourado de Sousa</div>
+                <div class="user-id">ID: 67</div>
+            </div>
+            <div class="user-phone">📱 +351915618606</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351915618606&name=David%20Jo%C3%A3o%20Dourado%20de%20Sousa</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351915618606&name=David%20Jo%C3%A3o%20Dourado%20de%20Sousa" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351915618606&name=David%20Jo%C3%A3o%20Dourado%20de%20Sousa', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351915618606', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351915618606&name=David%20Jo%C3%A3o%20Dourado%20de%20Sousa', 'David João Dourado de Sousa', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="david miguel de jesus barbosa +351967246030 294">
+            <div class="user-header">
+                <div class="user-name">👤 David Miguel de Jesus Barbosa</div>
+                <div class="user-id">ID: 294</div>
+            </div>
+            <div class="user-phone">📱 +351967246030</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967246030&name=David%20Miguel%20de%20Jesus%20Barbosa</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967246030&name=David%20Miguel%20de%20Jesus%20Barbosa" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967246030&name=David%20Miguel%20de%20Jesus%20Barbosa', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351967246030', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967246030&name=David%20Miguel%20de%20Jesus%20Barbosa', 'David Miguel de Jesus Barbosa', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="débora tatiana carvalho dias +351964242655 44">
+            <div class="user-header">
+                <div class="user-name">👤 Débora Tatiana Carvalho Dias</div>
+                <div class="user-id">ID: 44</div>
+            </div>
+            <div class="user-phone">📱 +351964242655</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351964242655&name=D%C3%A9bora%20Tatiana%20Carvalho%20Dias</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351964242655&name=D%C3%A9bora%20Tatiana%20Carvalho%20Dias" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351964242655&name=D%C3%A9bora%20Tatiana%20Carvalho%20Dias', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351964242655', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351964242655&name=D%C3%A9bora%20Tatiana%20Carvalho%20Dias', 'Débora Tatiana Carvalho Dias', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="denise beatriz pópulo de oliveira cartaxo  78">
+            <div class="user-header">
+                <div class="user-name">👤 Denise Beatriz Pópulo de Oliveira Cartaxo</div>
+                <div class="user-id">ID: 78</div>
+            </div>
+            <div class="user-phone">📱 </div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Denise%20Beatriz%20P%C3%B3pulo%20de%20Oliveira%20Cartaxo</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Denise%20Beatriz%20P%C3%B3pulo%20de%20Oliveira%20Cartaxo" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Denise%20Beatriz%20P%C3%B3pulo%20de%20Oliveira%20Cartaxo', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Denise%20Beatriz%20P%C3%B3pulo%20de%20Oliveira%20Cartaxo', 'Denise Beatriz Pópulo de Oliveira Cartaxo', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="diogo andré marques +351915743523 10054">
+            <div class="user-header">
+                <div class="user-name">👤 Diogo André Marques</div>
+                <div class="user-id">ID: 10054</div>
+            </div>
+            <div class="user-phone">📱 +351915743523</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351915743523&name=Diogo%20Andr%C3%A9%20Marques</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351915743523&name=Diogo%20Andr%C3%A9%20Marques" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351915743523&name=Diogo%20Andr%C3%A9%20Marques', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351915743523', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351915743523&name=Diogo%20Andr%C3%A9%20Marques', 'Diogo André Marques', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="diogo miguel antunes carvalhana  93">
+            <div class="user-header">
+                <div class="user-name">👤 Diogo Miguel Antunes Carvalhana</div>
+                <div class="user-id">ID: 93</div>
+            </div>
+            <div class="user-phone">📱 </div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Diogo%20Miguel%20Antunes%20Carvalhana</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Diogo%20Miguel%20Antunes%20Carvalhana" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Diogo%20Miguel%20Antunes%20Carvalhana', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Diogo%20Miguel%20Antunes%20Carvalhana', 'Diogo Miguel Antunes Carvalhana', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="edilene da silva bastos  94">
+            <div class="user-header">
+                <div class="user-name">👤 Edilene da Silva Bastos</div>
+                <div class="user-id">ID: 94</div>
+            </div>
+            <div class="user-phone">📱 </div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Edilene%20da%20Silva%20Bastos</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Edilene%20da%20Silva%20Bastos" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Edilene%20da%20Silva%20Bastos', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Edilene%20da%20Silva%20Bastos', 'Edilene da Silva Bastos', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="emília isaura mahanjane chunguane +351966184331 47">
+            <div class="user-header">
+                <div class="user-name">👤 Emília Isaura Mahanjane Chunguane</div>
+                <div class="user-id">ID: 47</div>
+            </div>
+            <div class="user-phone">📱 +351966184331</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351966184331&name=Em%C3%ADlia%20Isaura%20Mahanjane%20Chunguane</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351966184331&name=Em%C3%ADlia%20Isaura%20Mahanjane%20Chunguane" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351966184331&name=Em%C3%ADlia%20Isaura%20Mahanjane%20Chunguane', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351966184331', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351966184331&name=Em%C3%ADlia%20Isaura%20Mahanjane%20Chunguane', 'Emília Isaura Mahanjane Chunguane', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="fabiana mendonça magalhães 938669746 48">
+            <div class="user-header">
+                <div class="user-name">👤 Fabiana Mendonça Magalhães</div>
+                <div class="user-id">ID: 48</div>
+            </div>
+            <div class="user-phone">📱 938669746</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=938669746&name=Fabiana%20Mendon%C3%A7a%20Magalh%C3%A3es</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=938669746&name=Fabiana%20Mendon%C3%A7a%20Magalh%C3%A3es" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=938669746&name=Fabiana%20Mendon%C3%A7a%20Magalh%C3%A3es', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('938669746', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=938669746&name=Fabiana%20Mendon%C3%A7a%20Magalh%C3%A3es', 'Fabiana Mendonça Magalhães', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="florbela maria teixeira pereira +351913322459 49">
+            <div class="user-header">
+                <div class="user-name">👤 Florbela Maria Teixeira Pereira</div>
+                <div class="user-id">ID: 49</div>
+            </div>
+            <div class="user-phone">📱 +351913322459</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351913322459&name=Florbela%20Maria%20Teixeira%20Pereira</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351913322459&name=Florbela%20Maria%20Teixeira%20Pereira" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351913322459&name=Florbela%20Maria%20Teixeira%20Pereira', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351913322459', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351913322459&name=Florbela%20Maria%20Teixeira%20Pereira', 'Florbela Maria Teixeira Pereira', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="idalécio casimiro salero zita serôdio 963191398 10043">
+            <div class="user-header">
+                <div class="user-name">👤 Idalécio Casimiro Salero Zita Serôdio</div>
+                <div class="user-id">ID: 10043</div>
+            </div>
+            <div class="user-phone">📱 963191398</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=963191398&name=Idal%C3%A9cio%20Casimiro%20Salero%20Zita%20Ser%C3%B4dio</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=963191398&name=Idal%C3%A9cio%20Casimiro%20Salero%20Zita%20Ser%C3%B4dio" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=963191398&name=Idal%C3%A9cio%20Casimiro%20Salero%20Zita%20Ser%C3%B4dio', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('963191398', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=963191398&name=Idal%C3%A9cio%20Casimiro%20Salero%20Zita%20Ser%C3%B4dio', 'Idalécio Casimiro Salero Zita Serôdio', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="jéssica patrícia romano vilhena 938835793 10032">
+            <div class="user-header">
+                <div class="user-name">👤 Jéssica Patrícia Romano Vilhena</div>
+                <div class="user-id">ID: 10032</div>
+            </div>
+            <div class="user-phone">📱 938835793</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=938835793&name=J%C3%A9ssica%20Patr%C3%ADcia%20Romano%20Vilhena</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=938835793&name=J%C3%A9ssica%20Patr%C3%ADcia%20Romano%20Vilhena" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=938835793&name=J%C3%A9ssica%20Patr%C3%ADcia%20Romano%20Vilhena', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('938835793', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=938835793&name=J%C3%A9ssica%20Patr%C3%ADcia%20Romano%20Vilhena', 'Jéssica Patrícia Romano Vilhena', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="joana afonso gonçalves +351961691467 3">
+            <div class="user-header">
+                <div class="user-name">👤 Joana Afonso Gonçalves</div>
+                <div class="user-id">ID: 3</div>
+            </div>
+            <div class="user-phone">📱 +351961691467</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351961691467&name=Joana%20Afonso%20Gon%C3%A7alves</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351961691467&name=Joana%20Afonso%20Gon%C3%A7alves" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351961691467&name=Joana%20Afonso%20Gon%C3%A7alves', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351961691467', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351961691467&name=Joana%20Afonso%20Gon%C3%A7alves', 'Joana Afonso Gonçalves', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="joão ferreira pereira antunes 963541008 10030">
+            <div class="user-header">
+                <div class="user-name">👤 João Ferreira Pereira Antunes</div>
+                <div class="user-id">ID: 10030</div>
+            </div>
+            <div class="user-phone">📱 963541008</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=963541008&name=Jo%C3%A3o%20Ferreira%20Pereira%20Antunes</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=963541008&name=Jo%C3%A3o%20Ferreira%20Pereira%20Antunes" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=963541008&name=Jo%C3%A3o%20Ferreira%20Pereira%20Antunes', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('963541008', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=963541008&name=Jo%C3%A3o%20Ferreira%20Pereira%20Antunes', 'João Ferreira Pereira Antunes', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="joão gabriel da silva 923198840 10029">
+            <div class="user-header">
+                <div class="user-name">👤 João Gabriel da Silva</div>
+                <div class="user-id">ID: 10029</div>
+            </div>
+            <div class="user-phone">📱 923198840</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=923198840&name=Jo%C3%A3o%20Gabriel%20da%20Silva</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=923198840&name=Jo%C3%A3o%20Gabriel%20da%20Silva" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=923198840&name=Jo%C3%A3o%20Gabriel%20da%20Silva', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('923198840', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=923198840&name=Jo%C3%A3o%20Gabriel%20da%20Silva', 'João Gabriel da Silva', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="josé cavaco correia +351936718135 69">
+            <div class="user-header">
+                <div class="user-name">👤 José Cavaco Correia</div>
+                <div class="user-id">ID: 69</div>
+            </div>
+            <div class="user-phone">📱 +351936718135</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351936718135&name=Jos%C3%A9%20Cavaco%20Correia</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351936718135&name=Jos%C3%A9%20Cavaco%20Correia" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351936718135&name=Jos%C3%A9%20Cavaco%20Correia', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351936718135', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351936718135&name=Jos%C3%A9%20Cavaco%20Correia', 'José Cavaco Correia', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="leonardo figueira ramalho +351965882889 194">
+            <div class="user-header">
+                <div class="user-name">👤 Leonardo Figueira Ramalho</div>
+                <div class="user-id">ID: 194</div>
+            </div>
+            <div class="user-phone">📱 +351965882889</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351965882889&name=Leonardo%20Figueira%20Ramalho</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351965882889&name=Leonardo%20Figueira%20Ramalho" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351965882889&name=Leonardo%20Figueira%20Ramalho', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351965882889', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351965882889&name=Leonardo%20Figueira%20Ramalho', 'Leonardo Figueira Ramalho', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="lídia maria ramos guerreiro +351927156311 25">
+            <div class="user-header">
+                <div class="user-name">👤 Lídia Maria Ramos Guerreiro</div>
+                <div class="user-id">ID: 25</div>
+            </div>
+            <div class="user-phone">📱 +351927156311</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351927156311&name=L%C3%ADdia%20Maria%20Ramos%20Guerreiro</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351927156311&name=L%C3%ADdia%20Maria%20Ramos%20Guerreiro" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351927156311&name=L%C3%ADdia%20Maria%20Ramos%20Guerreiro', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351927156311', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351927156311&name=L%C3%ADdia%20Maria%20Ramos%20Guerreiro', 'Lídia Maria Ramos Guerreiro', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="liliana maria neves correia +351961816185 51">
+            <div class="user-header">
+                <div class="user-name">👤 Liliana Maria Neves Correia</div>
+                <div class="user-id">ID: 51</div>
+            </div>
+            <div class="user-phone">📱 +351961816185</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351961816185&name=Liliana%20Maria%20Neves%20Correia</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351961816185&name=Liliana%20Maria%20Neves%20Correia" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351961816185&name=Liliana%20Maria%20Neves%20Correia', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351961816185', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351961816185&name=Liliana%20Maria%20Neves%20Correia', 'Liliana Maria Neves Correia', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="luciana lima da luz azevedo 929124600 10048">
+            <div class="user-header">
+                <div class="user-name">👤 Luciana Lima da Luz Azevedo</div>
+                <div class="user-id">ID: 10048</div>
+            </div>
+            <div class="user-phone">📱 929124600</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=929124600&name=Luciana%20Lima%20da%20Luz%20Azevedo</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=929124600&name=Luciana%20Lima%20da%20Luz%20Azevedo" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=929124600&name=Luciana%20Lima%20da%20Luz%20Azevedo', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('929124600', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=929124600&name=Luciana%20Lima%20da%20Luz%20Azevedo', 'Luciana Lima da Luz Azevedo', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="luís felipe fonseca tavares 911519036 10031">
+            <div class="user-header">
+                <div class="user-name">👤 Luís Felipe Fonseca Tavares</div>
+                <div class="user-id">ID: 10031</div>
+            </div>
+            <div class="user-phone">📱 911519036</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=911519036&name=Lu%C3%ADs%20Felipe%20Fonseca%20Tavares</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=911519036&name=Lu%C3%ADs%20Felipe%20Fonseca%20Tavares" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=911519036&name=Lu%C3%ADs%20Felipe%20Fonseca%20Tavares', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('911519036', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=911519036&name=Lu%C3%ADs%20Felipe%20Fonseca%20Tavares', 'Luís Felipe Fonseca Tavares', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="mangali nepali 920205502 10047">
+            <div class="user-header">
+                <div class="user-name">👤 Mangali Nepali</div>
+                <div class="user-id">ID: 10047</div>
+            </div>
+            <div class="user-phone">📱 920205502</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=920205502&name=Mangali%20Nepali</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=920205502&name=Mangali%20Nepali" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=920205502&name=Mangali%20Nepali', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('920205502', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=920205502&name=Mangali%20Nepali', 'Mangali Nepali', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="manoj acharya 920234275 10045">
+            <div class="user-header">
+                <div class="user-name">👤 Manoj Acharya</div>
+                <div class="user-id">ID: 10045</div>
+            </div>
+            <div class="user-phone">📱 920234275</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=920234275&name=Manoj%20Acharya</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=920234275&name=Manoj%20Acharya" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=920234275&name=Manoj%20Acharya', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('920234275', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=920234275&name=Manoj%20Acharya', 'Manoj Acharya', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="mara cristina gonçalves luz  10009">
+            <div class="user-header">
+                <div class="user-name">👤 Mara Cristina Gonçalves Luz</div>
+                <div class="user-id">ID: 10009</div>
+            </div>
+            <div class="user-phone">📱 </div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Mara%20Cristina%20Gon%C3%A7alves%20Luz</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Mara%20Cristina%20Gon%C3%A7alves%20Luz" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Mara%20Cristina%20Gon%C3%A7alves%20Luz', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Mara%20Cristina%20Gon%C3%A7alves%20Luz', 'Mara Cristina Gonçalves Luz', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="marco andré barriguinha martinho +351968755119 72">
+            <div class="user-header">
+                <div class="user-name">👤 Marco André Barriguinha Martinho</div>
+                <div class="user-id">ID: 72</div>
+            </div>
+            <div class="user-phone">📱 +351968755119</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351968755119&name=Marco%20Andr%C3%A9%20Barriguinha%20Martinho</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351968755119&name=Marco%20Andr%C3%A9%20Barriguinha%20Martinho" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351968755119&name=Marco%20Andr%C3%A9%20Barriguinha%20Martinho', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351968755119', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351968755119&name=Marco%20Andr%C3%A9%20Barriguinha%20Martinho', 'Marco André Barriguinha Martinho', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="maria da glória gonçalves vinagre gomes +351919753731 53">
+            <div class="user-header">
+                <div class="user-name">👤 Maria da Glória Gonçalves Vinagre Gomes</div>
+                <div class="user-id">ID: 53</div>
+            </div>
+            <div class="user-phone">📱 +351919753731</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351919753731&name=Maria%20da%20Gl%C3%B3ria%20Gon%C3%A7alves%20Vinagre%20Gomes</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351919753731&name=Maria%20da%20Gl%C3%B3ria%20Gon%C3%A7alves%20Vinagre%20Gomes" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351919753731&name=Maria%20da%20Gl%C3%B3ria%20Gon%C3%A7alves%20Vinagre%20Gomes', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351919753731', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351919753731&name=Maria%20da%20Gl%C3%B3ria%20Gon%C3%A7alves%20Vinagre%20Gomes', 'Maria da Glória Gonçalves Vinagre Gomes', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="maria da graça santos duarte moreira +351926188832 26">
+            <div class="user-header">
+                <div class="user-name">👤 Maria da Graça Santos Duarte Moreira</div>
+                <div class="user-id">ID: 26</div>
+            </div>
+            <div class="user-phone">📱 +351926188832</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351926188832&name=Maria%20da%20Gra%C3%A7a%20Santos%20Duarte%20Moreira</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351926188832&name=Maria%20da%20Gra%C3%A7a%20Santos%20Duarte%20Moreira" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351926188832&name=Maria%20da%20Gra%C3%A7a%20Santos%20Duarte%20Moreira', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351926188832', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351926188832&name=Maria%20da%20Gra%C3%A7a%20Santos%20Duarte%20Moreira', 'Maria da Graça Santos Duarte Moreira', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="maria de fátima rosa pereira esteves 969519766 27">
+            <div class="user-header">
+                <div class="user-name">👤 Maria de Fátima Rosa Pereira Esteves</div>
+                <div class="user-id">ID: 27</div>
+            </div>
+            <div class="user-phone">📱 969519766</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=969519766&name=Maria%20de%20F%C3%A1tima%20Rosa%20Pereira%20Esteves</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=969519766&name=Maria%20de%20F%C3%A1tima%20Rosa%20Pereira%20Esteves" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=969519766&name=Maria%20de%20F%C3%A1tima%20Rosa%20Pereira%20Esteves', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('969519766', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=969519766&name=Maria%20de%20F%C3%A1tima%20Rosa%20Pereira%20Esteves', 'Maria de Fátima Rosa Pereira Esteves', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="maria dulce lança galrito +351966155568 54">
+            <div class="user-header">
+                <div class="user-name">👤 Maria Dulce Lança Galrito</div>
+                <div class="user-id">ID: 54</div>
+            </div>
+            <div class="user-phone">📱 +351966155568</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351966155568&name=Maria%20Dulce%20Lan%C3%A7a%20Galrito</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351966155568&name=Maria%20Dulce%20Lan%C3%A7a%20Galrito" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351966155568&name=Maria%20Dulce%20Lan%C3%A7a%20Galrito', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351966155568', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351966155568&name=Maria%20Dulce%20Lan%C3%A7a%20Galrito', 'Maria Dulce Lança Galrito', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="micaelle nunes da silva +351939030357 14">
+            <div class="user-header">
+                <div class="user-name">👤 Micaelle Nunes da Silva</div>
+                <div class="user-id">ID: 14</div>
+            </div>
+            <div class="user-phone">📱 +351939030357</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351939030357&name=Micaelle%20Nunes%20da%20Silva</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351939030357&name=Micaelle%20Nunes%20da%20Silva" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351939030357&name=Micaelle%20Nunes%20da%20Silva', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351939030357', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351939030357&name=Micaelle%20Nunes%20da%20Silva', 'Micaelle Nunes da Silva', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="mohamed mosbah +351927970910 70">
+            <div class="user-header">
+                <div class="user-name">👤 Mohamed Mosbah</div>
+                <div class="user-id">ID: 70</div>
+            </div>
+            <div class="user-phone">📱 +351927970910</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351927970910&name=Mohamed%20Mosbah</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351927970910&name=Mohamed%20Mosbah" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351927970910&name=Mohamed%20Mosbah', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351927970910', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351927970910&name=Mohamed%20Mosbah', 'Mohamed Mosbah', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="mohigul mardanova  238">
+            <div class="user-header">
+                <div class="user-name">👤 Mohigul Mardanova</div>
+                <div class="user-id">ID: 238</div>
+            </div>
+            <div class="user-phone">📱 </div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Mohigul%20Mardanova</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Mohigul%20Mardanova" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Mohigul%20Mardanova', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Mohigul%20Mardanova', 'Mohigul Mardanova', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="nádia marisa dos santos reis vieira 911554151 10044">
+            <div class="user-header">
+                <div class="user-name">👤 Nádia Marisa dos Santos Reis Vieira</div>
+                <div class="user-id">ID: 10044</div>
+            </div>
+            <div class="user-phone">📱 911554151</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=911554151&name=N%C3%A1dia%20Marisa%20dos%20Santos%20Reis%20Vieira</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=911554151&name=N%C3%A1dia%20Marisa%20dos%20Santos%20Reis%20Vieira" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=911554151&name=N%C3%A1dia%20Marisa%20dos%20Santos%20Reis%20Vieira', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('911554151', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=911554151&name=N%C3%A1dia%20Marisa%20dos%20Santos%20Reis%20Vieira', 'Nádia Marisa dos Santos Reis Vieira', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="natalia rotaru 920521612 10037">
+            <div class="user-header">
+                <div class="user-name">👤 Natalia Rotaru</div>
+                <div class="user-id">ID: 10037</div>
+            </div>
+            <div class="user-phone">📱 920521612</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=920521612&name=Natalia%20Rotaru</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=920521612&name=Natalia%20Rotaru" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=920521612&name=Natalia%20Rotaru', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('920521612', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=920521612&name=Natalia%20Rotaru', 'Natalia Rotaru', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="nuno gonçalo lourenço teixeira 963968870 56">
+            <div class="user-header">
+                <div class="user-name">👤 Nuno Gonçalo Lourenço Teixeira</div>
+                <div class="user-id">ID: 56</div>
+            </div>
+            <div class="user-phone">📱 963968870</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=963968870&name=Nuno%20Gon%C3%A7alo%20Louren%C3%A7o%20Teixeira</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=963968870&name=Nuno%20Gon%C3%A7alo%20Louren%C3%A7o%20Teixeira" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=963968870&name=Nuno%20Gon%C3%A7alo%20Louren%C3%A7o%20Teixeira', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('963968870', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=963968870&name=Nuno%20Gon%C3%A7alo%20Louren%C3%A7o%20Teixeira', 'Nuno Gonçalo Lourenço Teixeira', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="paulo jorge bentes brito 939439259 10036">
+            <div class="user-header">
+                <div class="user-name">👤 Paulo Jorge Bentes Brito</div>
+                <div class="user-id">ID: 10036</div>
+            </div>
+            <div class="user-phone">📱 939439259</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=939439259&name=Paulo%20Jorge%20Bentes%20Brito</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=939439259&name=Paulo%20Jorge%20Bentes%20Brito" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=939439259&name=Paulo%20Jorge%20Bentes%20Brito', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('939439259', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=939439259&name=Paulo%20Jorge%20Bentes%20Brito', 'Paulo Jorge Bentes Brito', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="paulo roberto rodrigues coelho filho  912072063 10035">
+            <div class="user-header">
+                <div class="user-name">👤 Paulo Roberto Rodrigues Coelho Filho</div>
+                <div class="user-id">ID: 10035</div>
+            </div>
+            <div class="user-phone">📱  912072063</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%20912072063&name=Paulo%20Roberto%20Rodrigues%20Coelho%20Filho</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%20912072063&name=Paulo%20Roberto%20Rodrigues%20Coelho%20Filho" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%20912072063&name=Paulo%20Roberto%20Rodrigues%20Coelho%20Filho', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp(' 912072063', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%20912072063&name=Paulo%20Roberto%20Rodrigues%20Coelho%20Filho', 'Paulo Roberto Rodrigues Coelho Filho', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="pedro miguel oliveira sacramento 965369085 10010">
+            <div class="user-header">
+                <div class="user-name">👤 Pedro Miguel Oliveira Sacramento</div>
+                <div class="user-id">ID: 10010</div>
+            </div>
+            <div class="user-phone">📱 965369085</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=965369085&name=Pedro%20Miguel%20Oliveira%20Sacramento</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=965369085&name=Pedro%20Miguel%20Oliveira%20Sacramento" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=965369085&name=Pedro%20Miguel%20Oliveira%20Sacramento', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('965369085', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=965369085&name=Pedro%20Miguel%20Oliveira%20Sacramento', 'Pedro Miguel Oliveira Sacramento', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="pedro sacramento  159">
+            <div class="user-header">
+                <div class="user-name">👤 Pedro Sacramento</div>
+                <div class="user-id">ID: 159</div>
+            </div>
+            <div class="user-phone">📱 </div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Pedro%20Sacramento</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Pedro%20Sacramento" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Pedro%20Sacramento', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Pedro%20Sacramento', 'Pedro Sacramento', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="raju ghimire 920551367 10039">
+            <div class="user-header">
+                <div class="user-name">👤 Raju Ghimire</div>
+                <div class="user-id">ID: 10039</div>
+            </div>
+            <div class="user-phone">📱 920551367</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=920551367&name=Raju%20Ghimire</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=920551367&name=Raju%20Ghimire" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=920551367&name=Raju%20Ghimire', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('920551367', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=920551367&name=Raju%20Ghimire', 'Raju Ghimire', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="ritu gharti +351920305734 59">
+            <div class="user-header">
+                <div class="user-name">👤 Ritu Gharti</div>
+                <div class="user-id">ID: 59</div>
+            </div>
+            <div class="user-phone">📱 +351920305734</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351920305734&name=Ritu%20Gharti</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351920305734&name=Ritu%20Gharti" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351920305734&name=Ritu%20Gharti', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351920305734', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351920305734&name=Ritu%20Gharti', 'Ritu Gharti', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="samara lima lopes 931466420 10034">
+            <div class="user-header">
+                <div class="user-name">👤 Samara Lima Lopes</div>
+                <div class="user-id">ID: 10034</div>
+            </div>
+            <div class="user-phone">📱 931466420</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=931466420&name=Samara%20Lima%20Lopes</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=931466420&name=Samara%20Lima%20Lopes" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=931466420&name=Samara%20Lima%20Lopes', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('931466420', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=931466420&name=Samara%20Lima%20Lopes', 'Samara Lima Lopes', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="sandrine de jesus gorrão brito +351926521830 9">
+            <div class="user-header">
+                <div class="user-name">👤 Sandrine de Jesus Gorrão Brito</div>
+                <div class="user-id">ID: 9</div>
+            </div>
+            <div class="user-phone">📱 +351926521830</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351926521830&name=Sandrine%20de%20Jesus%20Gorr%C3%A3o%20Brito</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351926521830&name=Sandrine%20de%20Jesus%20Gorr%C3%A3o%20Brito" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351926521830&name=Sandrine%20de%20Jesus%20Gorr%C3%A3o%20Brito', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351926521830', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351926521830&name=Sandrine%20de%20Jesus%20Gorr%C3%A3o%20Brito', 'Sandrine de Jesus Gorrão Brito', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="sara vieira alves +351963828553 61">
+            <div class="user-header">
+                <div class="user-name">👤 Sara Vieira Alves</div>
+                <div class="user-id">ID: 61</div>
+            </div>
+            <div class="user-phone">📱 +351963828553</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351963828553&name=Sara%20Vieira%20Alves</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351963828553&name=Sara%20Vieira%20Alves" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351963828553&name=Sara%20Vieira%20Alves', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351963828553', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351963828553&name=Sara%20Vieira%20Alves', 'Sara Vieira Alves', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="seykou baldé 920075970 10041">
+            <div class="user-header">
+                <div class="user-name">👤 Seykou Baldé</div>
+                <div class="user-id">ID: 10041</div>
+            </div>
+            <div class="user-phone">📱 920075970</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=920075970&name=Seykou%20Bald%C3%A9</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=920075970&name=Seykou%20Bald%C3%A9" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=920075970&name=Seykou%20Bald%C3%A9', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('920075970', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=920075970&name=Seykou%20Bald%C3%A9', 'Seykou Baldé', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="shirleine maria freitas de souza azevedo 926090986 10033">
+            <div class="user-header">
+                <div class="user-name">👤 Shirleine Maria Freitas de Souza Azevedo</div>
+                <div class="user-id">ID: 10033</div>
+            </div>
+            <div class="user-phone">📱 926090986</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=926090986&name=Shirleine%20Maria%20Freitas%20de%20Souza%20Azevedo</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=926090986&name=Shirleine%20Maria%20Freitas%20de%20Souza%20Azevedo" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=926090986&name=Shirleine%20Maria%20Freitas%20de%20Souza%20Azevedo', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('926090986', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=926090986&name=Shirleine%20Maria%20Freitas%20de%20Souza%20Azevedo', 'Shirleine Maria Freitas de Souza Azevedo', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="sónia susana silva vieira reis 964828945 62">
+            <div class="user-header">
+                <div class="user-name">👤 Sónia Susana Silva Vieira Reis</div>
+                <div class="user-id">ID: 62</div>
+            </div>
+            <div class="user-phone">📱 964828945</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=964828945&name=S%C3%B3nia%20Susana%20Silva%20Vieira%20Reis</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=964828945&name=S%C3%B3nia%20Susana%20Silva%20Vieira%20Reis" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=964828945&name=S%C3%B3nia%20Susana%20Silva%20Vieira%20Reis', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('964828945', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=964828945&name=S%C3%B3nia%20Susana%20Silva%20Vieira%20Reis', 'Sónia Susana Silva Vieira Reis', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="soraia alexandra quitério martins +351968839161 4">
+            <div class="user-header">
+                <div class="user-name">👤 Soraia Alexandra Quitério Martins</div>
+                <div class="user-id">ID: 4</div>
+            </div>
+            <div class="user-phone">📱 +351968839161</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351968839161&name=Soraia%20Alexandra%20Quit%C3%A9rio%20Martins</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351968839161&name=Soraia%20Alexandra%20Quit%C3%A9rio%20Martins" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351968839161&name=Soraia%20Alexandra%20Quit%C3%A9rio%20Martins', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351968839161', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351968839161&name=Soraia%20Alexandra%20Quit%C3%A9rio%20Martins', 'Soraia Alexandra Quitério Martins', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="teresa alexandra cândido dias louro +351916074189 5">
+            <div class="user-header">
+                <div class="user-name">👤 Teresa Alexandra Cândido Dias Louro</div>
+                <div class="user-id">ID: 5</div>
+            </div>
+            <div class="user-phone">📱 +351916074189</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351916074189&name=Teresa%20Alexandra%20C%C3%A2ndido%20Dias%20Louro</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351916074189&name=Teresa%20Alexandra%20C%C3%A2ndido%20Dias%20Louro" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351916074189&name=Teresa%20Alexandra%20C%C3%A2ndido%20Dias%20Louro', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351916074189', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351916074189&name=Teresa%20Alexandra%20C%C3%A2ndido%20Dias%20Louro', 'Teresa Alexandra Cândido Dias Louro', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="tereza oliva da silva +351967411858 63">
+            <div class="user-header">
+                <div class="user-name">👤 Tereza Oliva da Silva</div>
+                <div class="user-id">ID: 63</div>
+            </div>
+            <div class="user-phone">📱 +351967411858</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967411858&name=Tereza%20Oliva%20da%20Silva</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967411858&name=Tereza%20Oliva%20da%20Silva" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967411858&name=Tereza%20Oliva%20da%20Silva', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351967411858', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967411858&name=Tereza%20Oliva%20da%20Silva', 'Tereza Oliva da Silva', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="tiago andré felizardo morais girão  10017">
+            <div class="user-header">
+                <div class="user-name">👤 Tiago André Felizardo Morais Girão</div>
+                <div class="user-id">ID: 10017</div>
+            </div>
+            <div class="user-phone">📱 </div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Tiago%20Andr%C3%A9%20Felizardo%20Morais%20Gir%C3%A3o</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Tiago%20Andr%C3%A9%20Felizardo%20Morais%20Gir%C3%A3o" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Tiago%20Andr%C3%A9%20Felizardo%20Morais%20Gir%C3%A3o', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=&name=Tiago%20Andr%C3%A9%20Felizardo%20Morais%20Gir%C3%A3o', 'Tiago André Felizardo Morais Girão', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="tiago jorge da silva pacheco +351911100707 73">
+            <div class="user-header">
+                <div class="user-name">👤 Tiago Jorge da Silva Pacheco</div>
+                <div class="user-id">ID: 73</div>
+            </div>
+            <div class="user-phone">📱 +351911100707</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351911100707&name=Tiago%20Jorge%20da%20Silva%20Pacheco</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351911100707&name=Tiago%20Jorge%20da%20Silva%20Pacheco" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351911100707&name=Tiago%20Jorge%20da%20Silva%20Pacheco', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351911100707', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351911100707&name=Tiago%20Jorge%20da%20Silva%20Pacheco', 'Tiago Jorge da Silva Pacheco', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="tito miguel guerreiro pina +351963939616 34">
+            <div class="user-header">
+                <div class="user-name">👤 Tito Miguel Guerreiro Pina</div>
+                <div class="user-id">ID: 34</div>
+            </div>
+            <div class="user-phone">📱 +351963939616</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351963939616&name=Tito%20Miguel%20Guerreiro%20Pina</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351963939616&name=Tito%20Miguel%20Guerreiro%20Pina" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351963939616&name=Tito%20Miguel%20Guerreiro%20Pina', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351963939616', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351963939616&name=Tito%20Miguel%20Guerreiro%20Pina', 'Tito Miguel Guerreiro Pina', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="valéria ferreira da silva vieira +351927735366 35">
+            <div class="user-header">
+                <div class="user-name">👤 Valéria Ferreira Da Silva Vieira</div>
+                <div class="user-id">ID: 35</div>
+            </div>
+            <div class="user-phone">📱 +351927735366</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351927735366&name=Val%C3%A9ria%20Ferreira%20Da%20Silva%20Vieira</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351927735366&name=Val%C3%A9ria%20Ferreira%20Da%20Silva%20Vieira" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351927735366&name=Val%C3%A9ria%20Ferreira%20Da%20Silva%20Vieira', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351927735366', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351927735366&name=Val%C3%A9ria%20Ferreira%20Da%20Silva%20Vieira', 'Valéria Ferreira Da Silva Vieira', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="vânia de jesus guerreiro serra +351967101793 10013">
+            <div class="user-header">
+                <div class="user-name">👤 Vânia de Jesus Guerreiro Serra</div>
+                <div class="user-id">ID: 10013</div>
+            </div>
+            <div class="user-phone">📱 +351967101793</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967101793&name=V%C3%A2nia%20de%20Jesus%20Guerreiro%20Serra</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967101793&name=V%C3%A2nia%20de%20Jesus%20Guerreiro%20Serra" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967101793&name=V%C3%A2nia%20de%20Jesus%20Guerreiro%20Serra', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+351967101793', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B351967101793&name=V%C3%A2nia%20de%20Jesus%20Guerreiro%20Serra', 'Vânia de Jesus Guerreiro Serra', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="vera lúcia felicio picado 912168682 252">
+            <div class="user-header">
+                <div class="user-name">👤 Vera Lúcia Felicio Picado</div>
+                <div class="user-id">ID: 252</div>
+            </div>
+            <div class="user-phone">📱 912168682</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=912168682&name=Vera%20L%C3%BAcia%20Felicio%20Picado</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=912168682&name=Vera%20L%C3%BAcia%20Felicio%20Picado" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=912168682&name=Vera%20L%C3%BAcia%20Felicio%20Picado', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('912168682', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=912168682&name=Vera%20L%C3%BAcia%20Felicio%20Picado', 'Vera Lúcia Felicio Picado', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="user-card" data-search="yassine mosbah +216 55 132 101 283">
+            <div class="user-header">
+                <div class="user-name">👤 Yassine Mosbah</div>
+                <div class="user-id">ID: 283</div>
+            </div>
+            <div class="user-phone">📱 +216 55 132 101</div>
+            <div class="url-box">https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B216%2055%20132%20101&name=Yassine%20Mosbah</div>
+            <div class="btn-group">
+                <a href="https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B216%2055%20132%20101&name=Yassine%20Mosbah" target="_blank" class="btn btn-primary">🔗 Testar Link</a>
+                <button onclick="copyToClipboard('https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B216%2055%20132%20101&name=Yassine%20Mosbah', this)" class="btn btn-success">📋 Copiar URL</button>
+                <button onclick="shareWhatsApp('+216 55 132 101', 'https://semrumo.eu/app/myportal/clock-simple.html?phone=%2B216%2055%20132%20101&name=Yassine%20Mosbah', 'Yassine Mosbah', this)" class="btn btn-secondary">💬 Enviar WhatsApp</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Pesquisa
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const search = e.target.value.toLowerCase();
+            const cards = document.querySelectorAll('.user-card');
+
+            cards.forEach(card => {
+                const searchData = card.getAttribute('data-search');
+                if (searchData.includes(search)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+
+        // Copiar para clipboard
+        function copyToClipboard(text, btn) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ Copiado!';
+                btn.style.background = '#28a745';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.background = '';
+                }, 2000);
+            }).catch(err => {
+                alert('Erro ao copiar: ' + err);
+            });
+        }
+
+        // Compartilhar via WhatsApp
+        function shareWhatsApp(phone, url, name, btn) {
+            const message = encodeURIComponent(
+                `🔗 *Link de Picagem Pessoal - SEMRUMO*\n\n` +
+                `Olá ${name}! 👋\n\n` +
+                `Aqui está o seu link pessoal de picagem rápida:\n` +
+                `${url}\n\n` +
+                `💡 *Como usar:*\n` +
+                `1️⃣ Clique no link acima\n` +
+                `2️⃣ Permita acesso ao GPS\n` +
+                `3️⃣ Clique em ENTRADA ou SAÍDA\n` +
+                `4️⃣ Guarde o link nos favoritos!\n\n` +
+                `✅ Rápido, simples e com GPS automático!`
+            );
+            window.open(`https://wa.me/${phone.replace(/\+/g, '')}?text=${message}`, '_blank');
+        }
+
+        // Estatísticas
+        console.log('📊 Total de links gerados: 76');
+    </script>
+</body>
+</html>

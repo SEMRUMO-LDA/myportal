@@ -8,12 +8,26 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Create optimized Supabase client with payload logging
+// Validate required environment variables
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  const missing = [];
+  if (!SUPABASE_URL) missing.push('VITE_SUPABASE_URL');
+  if (!SUPABASE_ANON_KEY) missing.push('VITE_SUPABASE_ANON_KEY');
+
+  throw new Error(
+    `❌ Missing required environment variables: ${missing.join(', ')}\n` +
+    `Please check your .env file and ensure these variables are set.`
+  );
+}
+
+// Create optimized Supabase client with default session behavior
+// Session duration: 1 hora (padrão do Supabase)
+// persistSession: true permite que o utilizador não precise fazer login a cada refresh de página
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
+    persistSession: true,         // Guarda sessão no localStorage (padrão)
+    autoRefreshToken: true,        // Renova token automaticamente (padrão)
+    detectSessionInUrl: true,      // Deteta session em magic links/callbacks
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
   },
   db: {

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Session Recovery</title>
+</head>
+<body>
+    <h1>Supabase Session Test</h1>
+    <div id="output"></div>
+    
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+        
+        const supabase = createClient(
+            'https://imfhacvrivasciftaujm.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImltZmhhY3ZyaXZhc2NpZnRhdWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNTc0MjUsImV4cCI6MjA4NDczMzQyNX0.Y47GlWAZP-bObKVXKXRWvc93ljkA9-_ccqaCtvej_Bs'
+        );
+        
+        const output = document.getElementById('output');
+        
+        // Check BUILD_VERSION
+        const buildVersion = localStorage.getItem('app_build_version');
+        output.innerHTML += `<p><strong>BUILD_VERSION:</strong> ${buildVersion || 'NOT SET'}</p>`;
+        
+        // Check Supabase session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+            output.innerHTML += `<p style="color: red;"><strong>ERROR:</strong> ${error.message}</p>`;
+        } else if (session) {
+            output.innerHTML += `<p style="color: green;"><strong>SESSION FOUND!</strong></p>`;
+            output.innerHTML += `<p>User: ${session.user.email}</p>`;
+            output.innerHTML += `<p>Expires: ${new Date(session.expires_at * 1000).toLocaleString()}</p>`;
+        } else {
+            output.innerHTML += `<p style="color: orange;"><strong>NO SESSION</strong></p>`;
+        }
+        
+        // Check localStorage keys
+        output.innerHTML += `<h2>localStorage Keys:</h2>`;
+        output.innerHTML += `<ul>`;
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.includes('supabase') || key.includes('auth')) {
+                output.innerHTML += `<li><strong>${key}:</strong> ${localStorage.getItem(key).substring(0, 50)}...</li>`;
+            }
+        }
+        output.innerHTML += `</ul>`;
+    </script>
+</body>
+</html>

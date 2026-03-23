@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Picagem</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: #667eea;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .clock {
+            font-size: 36px;
+            font-weight: bold;
+            color: #333;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .info {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        button {
+            flex: 1;
+            padding: 18px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+
+        .btn-entrada {
+            background: #28a745;
+        }
+
+        .btn-entrada:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .btn-saida {
+            background: #dc3545;
+        }
+
+        .btn-saida:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .debug {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+            text-align: left;
+        }
+
+        .debug h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .debug pre {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">⏰</div>
+        <h1>Picagem Rápida</h1>
+        <p class="subtitle">SEMRUMO - Sistema de Ponto</p>
+
+        <div class="clock" id="clock">--:--:--</div>
+
+        <div class="info">
+            ✅ Página carregada com sucesso!<br>
+            Pronta para testar.
+        </div>
+
+        <div class="buttons">
+            <button class="btn-entrada" onclick="testarEntrada()">
+                ✅ ENTRADA
+            </button>
+            <button class="btn-saida" onclick="testarSaida()">
+                🚪 SAÍDA
+            </button>
+        </div>
+
+        <div class="debug">
+            <h3>🧪 Debug Info:</h3>
+            <pre id="debug"></pre>
+        </div>
+    </div>
+
+    <script>
+        // Get URL params
+        const params = new URLSearchParams(window.location.search);
+        const phone = params.get('phone');
+        const name = params.get('name');
+
+        // Update debug info
+        const debugInfo = {
+            'URL Atual': window.location.href,
+            'Phone': phone || '❌ Não fornecido',
+            'Name': name || '❌ Não fornecido',
+            'User Agent': navigator.userAgent,
+            'Largura': window.innerWidth + 'px',
+            'Altura': window.innerHeight + 'px',
+            'GPS Disponível': navigator.geolocation ? '✅ Sim' : '❌ Não',
+            'Hora Local': new Date().toLocaleString('pt-PT')
+        };
+
+        document.getElementById('debug').textContent = JSON.stringify(debugInfo, null, 2);
+
+        // Update clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent = now.toTimeString().split(' ')[0];
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Test functions
+        function testarEntrada() {
+            alert('✅ Botão ENTRADA funcionou!\n\nTelefone: ' + (phone || 'não fornecido') + '\nNome: ' + (name || 'não fornecido'));
+            console.log('ENTRADA clicada', { phone, name });
+        }
+
+        function testarSaida() {
+            alert('✅ Botão SAÍDA funcionou!\n\nTelefone: ' + (phone || 'não fornecido') + '\nNome: ' + (name || 'não fornecido'));
+            console.log('SAÍDA clicada', { phone, name });
+        }
+
+        console.log('📱 Teste.html carregado com sucesso!');
+        console.log('Parâmetros:', { phone, name });
+    </script>
+</body>
+</html>

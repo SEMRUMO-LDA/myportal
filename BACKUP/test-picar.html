@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Test Picar API</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+        .success { border-left-color: #28a745; }
+        .error { border-left-color: #dc3545; }
+        pre {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Picar API - Debug</h1>
+
+    <div class="test">
+        <h3>Config:</h3>
+        <pre id="config"></pre>
+    </div>
+
+    <button onclick="testAPI()">🔍 Test API Connection</button>
+    <button onclick="testFindUser()">👤 Test Find User</button>
+    <button onclick="testWithDifferentPhones()">📱 Test Different Phone Formats</button>
+
+    <div id="results"></div>
+
+    <script>
+        const API_URL = 'https://imfhacvrivasciftaujm.supabase.co/rest/v1';
+        const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImltZmhhY3ZyaXZhc2NpZnRhdWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNTc0MjUsImV4cCI6MjA4NDczMzQyNX0.Y47GlWAZP-bObKVXKXRWvc93ljkA9-_ccqaCtvej_Bs';
+
+        document.getElementById('config').textContent = `
+API_URL: ${API_URL}
+API_KEY: ${API_KEY.substring(0, 50)}...
+        `.trim();
+
+        function addResult(title, data, success = true) {
+            const div = document.createElement('div');
+            div.className = `test ${success ? 'success' : 'error'}`;
+            div.innerHTML = `
+                <h3>${title}</h3>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            document.getElementById('results').appendChild(div);
+        }
+
+        async function testAPI() {
+            document.getElementById('results').innerHTML = '';
+
+            try {
+                addResult('🔄 Testing API connection...', { status: 'loading' });
+
+                const response = await fetch(`${API_URL}/users?limit=1`, {
+                    headers: {
+                        'apikey': API_KEY,
+                        'Authorization': `Bearer ${API_KEY}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addResult('✅ API Connection OK', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        data: data
+                    }, true);
+                } else {
+                    addResult('❌ API Connection Failed', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        error: data
+                    }, false);
+                }
+            } catch (err) {
+                addResult('❌ Network Error', {
+                    error: err.message,
+                    stack: err.stack
+                }, false);
+            }
+        }
+
+        async function testFindUser() {
+            document.getElementById('results').innerHTML = '';
+            const testPhone = '911100707';
+
+            addResult('🔍 Searching for phone: ' + testPhone, { phone: testPhone });
+
+            // Test 1: ILIKE
+            try {
+                const url1 = `${API_URL}/users?phone=ilike.%${testPhone}%&select=id,name,phone`;
+                addResult('📡 Request URL (ILIKE)', { url: url1 });
+
+                const res1 = await fetch(url1, {
+                    headers: {
+                        'apikey': API_KEY,
+                        'Authorization': `Bearer ${API_KEY}`
+                    }
+                });
+
+                const data1 = await res1.json();
+
+                addResult('📥 Response (ILIKE)', {
+                    status: res1.status,
+                    found: data1.length || 0,
+                    data: data1
+                }, data1.length > 0);
+            } catch (err) {
+                addResult('❌ Error (ILIKE)', { error: err.message }, false);
+            }
+
+            // Test 2: EQ exact
+            try {
+                const url2 = `${API_URL}/users?phone=eq.${testPhone}&select=id,name,phone`;
+                addResult('📡 Request URL (EQ)', { url: url2 });
+
+                const res2 = await fetch(url2, {
+                    headers: {
+                        'apikey': API_KEY,
+                        'Authorization': `Bearer ${API_KEY}`
+                    }
+                });
+
+                const data2 = await res2.json();
+
+                addResult('📥 Response (EQ)', {
+                    status: res2.status,
+                    found: data2.length || 0,
+                    data: data2
+                }, data2.length > 0);
+            } catch (err) {
+                addResult('❌ Error (EQ)', { error: err.message }, false);
+            }
+
+            // Test 3: With +351
+            try {
+                const url3 = `${API_URL}/users?phone=eq.%2B351${testPhone}&select=id,name,phone`;
+                addResult('📡 Request URL (+351)', { url: url3 });
+
+                const res3 = await fetch(url3, {
+                    headers: {
+                        'apikey': API_KEY,
+                        'Authorization': `Bearer ${API_KEY}`
+                    }
+                });
+
+                const data3 = await res3.json();
+
+                addResult('📥 Response (+351)', {
+                    status: res3.status,
+                    found: data3.length || 0,
+                    data: data3
+                }, data3.length > 0);
+            } catch (err) {
+                addResult('❌ Error (+351)', { error: err.message }, false);
+            }
+        }
+
+        async function testWithDifferentPhones() {
+            document.getElementById('results').innerHTML = '';
+
+            const phones = [
+                '911100707',
+                '+351911100707',
+                '963541008',
+                '964828945'
+            ];
+
+            for (const phone of phones) {
+                try {
+                    const url = `${API_URL}/users?phone=ilike.%${phone.replace('+', '%2B')}%&select=id,name,phone&limit=1`;
+
+                    const res = await fetch(url, {
+                        headers: {
+                            'apikey': API_KEY,
+                            'Authorization': `Bearer ${API_KEY}`
+                        }
+                    });
+
+                    const data = await res.json();
+
+                    addResult(`📱 Test: ${phone}`, {
+                        status: res.status,
+                        found: data.length || 0,
+                        user: data[0] || null
+                    }, data.length > 0);
+                } catch (err) {
+                    addResult(`❌ Error: ${phone}`, { error: err.message }, false);
+                }
+            }
+        }
+
+        // Auto-test on load
+        window.onload = () => {
+            console.log('Test page loaded. Click buttons to run tests.');
+        };
+    </script>
+</body>
+</html>

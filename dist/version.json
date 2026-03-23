@@ -1,0 +1,11 @@
+{
+  "version": "1.55.0",
+  "buildDate": "2026-03-20T14:30:00Z",
+  "buildNumber": 55,
+  "features": [
+    "🔥 HOT FIX: Login infinito 'A carregar...'",
+    "✅ Timeout 5s permite login mesmo sem users",
+    "✅ Previne bloqueio total da aplicação",
+    "✅ Compatível com RLS e queries lentas"
+  ]
+}

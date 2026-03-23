@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"\nimport { createClient } from ''@supabase/supabase-js'';\nimport dotenv from ''dotenv'';\ndotenv.config({ path: ''.env.local'' });\n\nconst supabase = createClient(\n  process.env.VITE_SUPABASE_URL,\n  process.env.SUPABASE_SERVICE_KEY\n);\n\n// Get time_logs structure\nconst { data, error } = await supabase\n  .from(''time_logs'')\n  .select(''*'')\n  .limit(1);\n\nif (data && data[0]) {\n  console.log(''time_logs fields:'', Object.keys(data[0]).join('', ''));\n} else {\n  console.log(''Error or no data:'', error);\n}\n\")",
+      "Bash(chmod +x send-location-button.mjs)",
+      "Bash(node send-location-button.mjs)",
+      "Bash(chmod +x send-clock-link.mjs)",
+      "Bash(node send-clock-link.mjs --test)",
+      "Bash(npm run dev)",
+      "Bash(chmod +x generate-permanent-links.mjs)",
+      "Bash(node generate-permanent-links.mjs)",
+      "Bash(chmod +x /Users/tiagopacheco/Desktop/MYPORTAL/test-whatsapp-link-command.mjs)",
+      "Bash(node test-whatsapp-link-command.mjs)",
+      "Bash(chmod +x /Users/tiagopacheco/Desktop/MYPORTAL/generate-all-clock-urls.mjs)",
+      "Bash(node /Users/tiagopacheco/Desktop/MYPORTAL/generate-all-clock-urls.mjs)",
+      "Bash(node generate-all-clock-urls.mjs)",
+      "Bash(chmod +x test-find-user.mjs)",
+      "Bash(node test-find-user.mjs)",
+      "Bash(open \"file:///Users/tiagopacheco/Desktop/MYPORTAL/public/teste.html?phone=911100707&name=Tiago\")",
+      "Bash(open \"http://localhost:3001/app/myportal/teste.html?phone=911100707&name=Tiago\")",
+      "Bash(open \"http://localhost:3001/app/myportal/\")",
+      "Bash(open \"http://localhost:3003/app/myportal/\")",
+      "Bash(npx tsc --noEmit)",
+      "Bash(open \"http://localhost:3003/app/myportal/clear-storage.html\")",
+      "Bash(git checkout services/userCacheService.ts)",
+      "Bash(git restore App.tsx)",
+      "Bash(open \"http://localhost:3006/app/myportal/clear-storage.html\")",
+      "Bash(open \"http://localhost:3003/app/myportal/test-react.html\")",
+      "Bash(open \"http://localhost:3003/app/myportal/#/login\")",
+      "Bash(open \"http://localhost:3003/app/myportal/debug-login.html\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

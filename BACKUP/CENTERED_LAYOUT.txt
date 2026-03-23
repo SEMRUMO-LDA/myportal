@@ -1,0 +1,235 @@
+  // --- CENTERED KEYPAD LAYOUT ---
+  if (mode === 'employee') {
+    const getStepTitle = () => {
+      switch (step) {
+        case 'id': return 'Identificação';
+        case 'pin': return 'Código PIN';
+        case 'new-pin': return 'Novo PIN';
+        case 'confirm-pin': return 'Confirmar PIN';
+        default: return 'Identificação';
+      }
+    };
+
+    const getInputValue = () => {
+      switch (step) {
+        case 'id': return accessCode;
+        case 'pin': return pin;
+        case 'new-pin': return newPin;
+        case 'confirm-pin': return confirmPin;
+        default: return '';
+      }
+    };
+
+    const getInputPlaceholder = () => {
+      switch (step) {
+        case 'id': return "Número Colaborador (ID)";
+        default: return "Introduza o PIN";
+      }
+    };
+
+    return (
+      <div className="h-screen w-screen flex flex-col overflow-hidden relative bg-gradient-to-br from-[#001f3f] via-[#003366] to-[#004080]">
+
+        {/* Kiosk Success Overlay */}
+        {showKioskSuccess && (
+          <div className="fixed inset-0 z-50 bg-gradient-to-br from-emerald-600 to-emerald-800 flex flex-col items-center justify-center animate-fade-in">
+            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-8 shadow-2xl animate-scale-in">
+              <CheckCircle className="text-emerald-600" size={56} />
+            </div>
+            <h2 className="text-4xl md:text-6xl font-bold text-white mb-4 text-center">
+              {kioskAction === 'in' ? 'Entrada Registada' : 'Saída Registada'}
+            </h2>
+            <p className="text-2xl md:text-3xl text-emerald-200 mb-8">{kioskSuccessUser}</p>
+            <p className="text-lg text-white/60">
+              {currentTime.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </p>
+            <div className="mt-8 flex items-center gap-2 text-white/40 text-sm">
+              <Loader2 size={16} className="animate-spin" />
+              A voltar ao ecrã inicial...
+            </div>
+          </div>
+        )}
+
+        {/* Background Decoration */}
+        <div className="absolute inset-0 overflow-hidden opacity-5">
+          <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-blue-400 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-emerald-400 rounded-full blur-3xl"></div>
+        </div>
+
+        {/* Top Bar */}
+        <div className="relative z-10 flex items-center justify-between px-6 md:px-12 py-4">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/10">
+              <Clock className="text-blue-300" size={20} />
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-white leading-none">
+                SEMRUMO
+              </h1>
+              <p className="text-blue-400 text-xs font-bold">MY PORTAL</p>
+            </div>
+          </div>
+
+          {/* Status Indicators */}
+          <div className="flex items-center gap-3">
+            {/* Connection Status */}
+            <div className={`flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full border ${
+              isOnline
+                ? 'text-green-400 bg-green-500/10 border-green-500/20'
+                : 'text-orange-400 bg-orange-500/10 border-orange-500/20 animate-pulse'
+            }`}>
+              {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
+              <span className="hidden md:inline">{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
+            </div>
+
+            {/* Kiosk Mode Indicator */}
+            {isKioskMode && (
+              <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
+                <Tablet size={14} />
+                <span className="hidden md:inline">KIOSK</span>
+              </div>
+            )}
+
+            {/* Time */}
+            <div className="text-white/60 text-2xl md:text-4xl font-bold tabular-nums tracking-tight">
+              {currentTime.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content - Centered Keypad */}
+        <div className="flex-1 flex items-center justify-center px-4 md:px-8 pb-8 relative z-10">
+          <div className="w-full max-w-md space-y-6">
+
+            {/* Step Title */}
+            <div className="text-center">
+              <h2 className="text-white text-2xl md:text-3xl font-bold mb-3">
+                {getStepTitle()}
+              </h2>
+              <div className={`h-1 w-16 mx-auto rounded-full transition-all duration-75 ${step === 'id' ? 'bg-blue-500' : 'bg-emerald-500'}`}></div>
+            </div>
+
+            {/* Login Type Toggle (only on ID step) */}
+            {step === 'id' && !isKioskMode && (
+              <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-2xl border border-white/10 backdrop-blur-sm">
+                <button
+                  onClick={() => setLoginType('colaborador')}
+                  className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-75 ${
+                    loginType === 'colaborador'
+                      ? 'bg-blue-500 text-white shadow-lg'
+                      : 'text-white/50 hover:text-white/80'
+                  }`}
+                >
+                  👤 Colaborador
+                </button>
+                <button
+                  onClick={() => setLoginType('administrador')}
+                  className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-75 ${
+                    loginType === 'administrador'
+                      ? 'bg-emerald-500 text-white shadow-lg'
+                      : 'text-white/50 hover:text-white/80'
+                  }`}
+                >
+                  👔 Administrador
+                </button>
+              </div>
+            )}
+
+            {/* Input Display */}
+            <div className="relative">
+              <input
+                type={step === 'id' ? "text" : "password"}
+                readOnly
+                value={getInputValue()}
+                placeholder={getInputPlaceholder()}
+                className={`w-full bg-[#002140]/80 backdrop-blur-md border-2 rounded-2xl px-6 py-5 text-center text-2xl text-white font-bold placeholder-gray-500 focus:outline-none transition-all shadow-2xl ${
+                  step === 'id' ? 'border-blue-500/30' : 'border-emerald-500/30'
+                }`}
+              />
+              {step !== 'id' && (
+                <button
+                  onClick={handleBack}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/10 transition-colors duration-75"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+              )}
+            </div>
+
+            {/* Error Message */}
+            {employeeError && (
+              <div className="text-center">
+                <p className="text-red-400 text-sm font-bold bg-red-500/10 py-3 px-4 rounded-xl border border-red-500/20">
+                  {employeeError}
+                </p>
+              </div>
+            )}
+
+            {/* Keypad */}
+            <div className="grid grid-cols-3 gap-3">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                <button
+                  key={num}
+                  onClick={() => handleNumpadClick(num)}
+                  className="aspect-square rounded-2xl bg-white/5 hover:bg-blue-500/80 active:bg-blue-600 backdrop-blur-md border border-white/10 text-white text-3xl font-bold transition-colors duration-75 shadow-lg hover:shadow-blue-500/50"
+                >
+                  {num}
+                </button>
+              ))}
+              <div className="aspect-square"></div>
+              <button
+                onClick={() => handleNumpadClick(0)}
+                className="aspect-square rounded-2xl bg-white/5 hover:bg-blue-500/80 active:bg-blue-600 backdrop-blur-md border border-white/10 text-white text-3xl font-bold transition-colors duration-75 shadow-lg hover:shadow-blue-500/50"
+              >
+                0
+              </button>
+              <button
+                onClick={handleBackspace}
+                className="aspect-square rounded-2xl bg-white/5 hover:bg-red-500/80 active:bg-red-600 backdrop-blur-md border border-white/10 text-white transition-colors duration-75 shadow-lg hover:shadow-red-500/50 flex items-center justify-center"
+              >
+                <Delete size={24} />
+              </button>
+            </div>
+
+            {/* Submit Button (only on ID step) */}
+            {step === 'id' && (
+              <div className="space-y-3">
+                <button
+                  onClick={handleEmployeeSubmit}
+                  disabled={accessCode.length === 0}
+                  className={`w-full bg-blue-500 hover:bg-blue-600 text-white font-bold h-16 rounded-2xl text-lg shadow-xl transition-colors duration-75 flex items-center justify-center gap-3 ${
+                    accessCode.length === 0 ? 'opacity-40 cursor-not-allowed' : 'opacity-100'
+                  }`}
+                >
+                  Seguinte <ArrowRight size={20} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordRecovery(true)}
+                  className="w-full text-blue-300 hover:text-blue-100 font-medium py-3 transition-colors duration-75 flex items-center justify-center gap-2"
+                >
+                  <KeyRound size={16} />
+                  Esqueci a minha password
+                </button>
+              </div>
+            )}
+
+            {/* PIN Info */}
+            {(step === 'new-pin' || step === 'confirm-pin') && (
+              <p className="text-emerald-400 text-sm text-center font-medium">
+                💡 Defina um novo PIN de 6 dígitos para a sua segurança
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Password Recovery Modal */}
+        <PasswordRecoveryModal
+          isOpen={showPasswordRecovery}
+          onClose={() => setShowPasswordRecovery(false)}
+        />
+      </div>
+    );
+  }

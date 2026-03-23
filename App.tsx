@@ -6,7 +6,11 @@ import Sidebar from './components/Sidebar';
 import CollaboratorLayout from './components/CollaboratorLayout';
 import { ResilientKioskWrapper } from './components/ResilientKioskWrapper';
 const LeoAssistant = lazy(() => import('./components/LeoAssistant'));
-const PrivacyPolicyModal = lazy(() => import('./components/PrivacyPolicyModal'));
+
+// PERFORMANCE: React Query for data caching and background sync
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './services/queryClient';
+
 import { ToastProvider, useToast } from './context/ToastContext';
 import { DEFAULT_ONBOARDING_TASKS, DEFAULT_ATTENDANCE_CONFIG } from './constants';
 import { User, Absence, AbsenceStatus, AbsenceStatusLabels, AbsenceType, TimeLog, Company, UserStatus, InternalMessage, TimeLogStatus, ToastMessage, ToastType, Expense, AppEvent, EventType, LockedMonth, JobRole, Holiday, Department, AnomalyType, Anomaly, Location, SchedulePeriod, ScheduleTemplate, LeaveType, Leave, LeaveStatus, LeaveStatusLabels, HourBankAdjustment, PersistentNotification, NotificationCategory, NotificationSeverity, NotificationActionType } from './types';
@@ -27,11 +31,12 @@ import { resilientTimeLogService } from './services/resilientTimeLogService';
 import { resolveNumericUserId } from './services/idResolver';
 const TeamStatus = lazy(() => import('./pages/TeamStatus'));
 
-// Lazy Load Pages for Performance Optimization
-const Login = lazy(() => import('./pages/Login'));
+// CRITICAL: Login must NOT be lazy loaded - it's the entry point
+import Login from './pages/Login';
 const Rewards = lazy(() => import('./pages/Rewards'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const KioskDashboard = lazy(() => import('./pages/KioskDashboard'));
+// CRITICAL: Dashboard components must NOT be lazy loaded - they're immediate destinations after login
+import Dashboard from './pages/Dashboard';
+import KioskDashboard from './pages/KioskDashboard';
 const EmployeeTimeBank = lazy(() => import('./pages/EmployeeTimeBank'));
 const EmployeeAttendance = lazy(() => import('./pages/EmployeeAttendance'));
 const EmployeeVacations = lazy(() => import('./pages/EmployeeVacations'));
@@ -128,24 +133,26 @@ const AdminLayout = ({
             </div>
           </div>
         ) : (
-          <Suspense fallback={<PageLoader />}>
-            <Outlet context={{
-              toggleSidebar: () => setSidebarOpen(prev => !prev),
-              users,
-              absences,
-              expenses,
-              messages,
-              currentUser,
-              notifications,
-              unreadNotifCount,
-              leaves,
-              surveyResponses,
-              anonymousFeedbacks,
-              onMarkNotificationRead,
-              onMarkAllNotificationsRead,
-              onUpdateLeave,
-            }} />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+              <Outlet context={{
+                toggleSidebar: () => setSidebarOpen(prev => !prev),
+                users,
+                absences,
+                expenses,
+                messages,
+                currentUser,
+                notifications,
+                unreadNotifCount,
+                leaves,
+                surveyResponses,
+                anonymousFeedbacks,
+                onMarkNotificationRead,
+                onMarkAllNotificationsRead,
+                onUpdateLeave,
+              }} />
+            </Suspense>
+          </ErrorBoundary>
         )}
       </main>
       <Suspense fallback={null}>
@@ -245,15 +252,71 @@ function App() {
 
   // Sync AuthContext user with App state (enables Phase 2 fetching and Leo)
   const { user: authUser, logout } = useAuth();
+  const prevAuthUserIdRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (authUser && users.length > 0) {
       const authUserId = Number(authUser.id);
       const fullProfile = users.find(u => Number(u.id) === authUserId);
+
       if (fullProfile) {
         setCurrentUser(fullProfile);
+
+        // CRITICAL FIX: Only trigger reload if user actually changed (prevents infinite loop)
+        if (prevAuthUserIdRef.current !== authUserId) {
+          console.log('[App] User changed, triggering data reload:', authUserId);
+          prevAuthUserIdRef.current = authUserId;
+          setAuthSessionKey(prev => prev + 1);
+        }
+      }
+    } else if (authUser && users.length === 0) {
+      // CRITICAL FIX: If user logged in but users not loaded yet, create minimal profile
+      const authUserId = Number(authUser.id);
+
+      console.log('[App] User logged in but users array empty - creating minimal profile');
+      const minimalProfile: User = {
+        id: authUserId,
+        name: authUser.name,
+        email: authUser.email || '',
+        role: authUser.role,
+        company: Company.SEMRUMO,
+        status: UserStatus.ACTIVE,
+        created_at: new Date().toISOString(),
+        photoUrl: 'https://picsum.photos/200/200',
+        attendanceConfig: DEFAULT_ATTENDANCE_CONFIG,
+        workStartTime: '09:00',
+        workEndTime: '18:00',
+        iban: '',
+        nif: '',
+        cc: '',
+        address: '',
+        birthDate: '',
+        admissionDate: new Date().toISOString().split('T')[0],
+        phone: '',
+        lunchStartTime: '13:00',
+        lunchEndTime: '14:00',
+        vacationDaysYearly: 0,
+        vacationDaysCarryover: 0,
+        vacationAdjustments: 0,
+        onboardingTasks: DEFAULT_ONBOARDING_TASKS,
+        documents: [],
+        department: '',
+        niss: '',
+        nationality: '',
+        mobilePhone: '',
+        whatsappEnabled: false,
+        locationIds: []
+      };
+      setCurrentUser(minimalProfile);
+
+      // Only trigger reload if user actually changed
+      if (prevAuthUserIdRef.current !== authUserId) {
+        prevAuthUserIdRef.current = authUserId;
+        setAuthSessionKey(prev => prev + 1);
       }
     } else if (!authUser) {
       setCurrentUser(null);
+      prevAuthUserIdRef.current = null;
     }
   }, [authUser, users]);
 
@@ -3409,25 +3472,12 @@ function App() {
     addToast('success', 'Ajuste de banco de horas registado com sucesso.');
   };
 
-  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+
 
   return (
-    <ErrorBoundary>
-      {/* Privacy Policy Modal - Opens on demand via footer link */}
-      {showPrivacyPolicy && (
-        <Suspense fallback={null}>
-          <PrivacyPolicyModal
-            onAccept={() => {
-              setShowPrivacyPolicy(false);
-            }}
-            onDecline={() => {
-              setShowPrivacyPolicy(false);
-            }}
-          />
-        </Suspense>
-      )}
-
-      <HashRouter>
+    <QueryClientProvider client={queryClient}>
+      <ErrorBoundary>
+        <HashRouter>
         <AppRoutes
           users={users}
           loading={loading}
@@ -3497,20 +3547,9 @@ function App() {
           onMarkNotificationRead={handleMarkNotificationRead}
           onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
         />
-      </HashRouter>
-
-      {/* RGPD Footer Link */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none">
-        <div className="flex justify-center py-1.5">
-          <button
-            onClick={() => setShowPrivacyPolicy(true)}
-            className="pointer-events-auto text-[10px] text-gray-400 hover:text-blue-500 transition-colors opacity-60 hover:opacity-100"
-          >
-            Política de Privacidade & RGPD
-          </button>
-        </div>
-      </div>
-    </ErrorBoundary>
+        </HashRouter>
+      </ErrorBoundary>
+    </QueryClientProvider>
   );
 }
 
@@ -3558,7 +3597,7 @@ const AppRoutes = ({ users, loading, dataReady, absences, timeLogs, expenses, me
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
-        <Route path="/login" element={<Login users={users} loading={loading} onUpdateUser={onUpdateUser} messages={messages} />} />
+        <Route path="/login" element={<Login />} />
 
         <Route path="/" element={<Navigate to="/login" replace />} />
 

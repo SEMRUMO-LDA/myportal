@@ -44,7 +44,7 @@ async function resolveUserSession(
         // Map DB role string to UserRole enum
         const dbRole = (userData.role || '').toUpperCase();
         let role: UserRole;
-        if (dbRole === 'ADMIN' || dbRole === 'ADMINISTRADOR') {
+        if (['ADMIN', 'ADMINISTRADOR', 'RH', 'DIRETOR DE UNIDADE', 'RESPONSÁVEL DE DEPARTAMENTO'].includes(dbRole)) {
             role = UserRole.ADMIN;
         } else if (dbRole === 'AUDITOR') {
             role = UserRole.AUDITOR;
@@ -65,14 +65,20 @@ async function resolveUserSession(
 
         // CRITICAL: Ensure we have a numeric ID (BigInt) for the database
         const numericId = Number(userData.id);
-        const finalId = !isNaN(numericId) ? String(numericId) : authId;
-        
-        if (finalId === authId && !email.includes('@semrumo.pt')) {
-           console.warn(`[AuthContext] Session ID resolved to UUID instead of BigInt for ${email}. DB operations may fail.`);
+
+        // VALIDATION: userData.id from DB must ALWAYS be numeric (BigInt)
+        // If it's not, this is a critical error in the database schema
+        if (isNaN(numericId) || numericId <= 0) {
+            console.error(`[AuthContext] CRITICAL: Invalid user ID from database!`, {
+                rawId: userData.id,
+                email,
+                type: typeof userData.id
+            });
+            throw new Error(`Invalid user ID in database for ${email}. Expected numeric ID, got: ${userData.id}`);
         }
 
         return {
-            id: finalId,
+            id: String(numericId), // Store as string for consistency
             name: userData.name || email,
             role,
             permissions,

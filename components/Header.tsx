@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
-import { Search, Menu } from 'lucide-react';
+import { Search, Menu, Shield } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { User } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { getRoleDisplayName } from '../utils/authUtils';
 
 interface HeaderProps {
   title: string;
@@ -38,7 +39,13 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, hideControls, onMenuCl
 
   const getUserLabel = () => {
     if (!user) return 'Convidado';
-    return user.role || 'Utilizador';
+    return getRoleDisplayName(user.role);
+  };
+
+  const isAdmin = () => {
+    if (!user) return false;
+    const adminRoles = ['ADMIN', 'Administrador', 'RH', 'Diretor de Unidade', 'Responsável de Departamento'];
+    return adminRoles.includes(user.role);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -80,11 +87,23 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, hideControls, onMenuCl
 
           <div className="flex items-center gap-2 md:gap-3">
 
+            {/* Admin Indicator */}
+            {isAdmin() && (
+              <>
+                <button
+                  className="flex items-center gap-2 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-medium text-sm shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95"
+                  title="Modo Administrador"
+                >
+                  <Shield size={16} className="animate-pulse" />
+                  <span className="hidden md:block">Admin</span>
+                </button>
+                <div className="h-8 w-[1px] bg-gray-200 dark:bg-gray-700 mx-1"></div>
+              </>
+            )}
+
             {/* Notifications removed */}
 
-
-
-            <div className="h-8 w-[1px] bg-gray-200 dark:bg-gray-700 mx-1 hidden md:block"></div>
+            {!isAdmin() && <div className="h-8 w-[1px] bg-gray-200 dark:bg-gray-700 mx-1 hidden md:block"></div>}
 
             <button className="flex items-center gap-2 p-1.5 pr-3 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 border border-brand-100 dark:border-brand-900/50 rounded-full group transition-all">
               <div className="w-8 h-8 rounded-full bg-brand-200 dark:bg-brand-800 text-brand-700 dark:text-brand-300 flex items-center justify-center font-bold text-xs group-hover:scale-105 transition-transform">
