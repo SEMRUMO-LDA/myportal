@@ -300,7 +300,7 @@ const Login: React.FC<LoginProps> = () => {
             // Cache role
             localStorage.setItem('user_role', result.user.role);
 
-            const isDefaultPin = ['123456', '1111', '1234'].includes(pin);
+            const isDefaultPin = ['123456', '1111', '1234', '000000'].includes(pin);
             if (requiresNewPin || isDefaultPin) {
               setStep('new-pin');
               setNewPin('');
@@ -336,7 +336,7 @@ const Login: React.FC<LoginProps> = () => {
             localStorage.setItem('user_role', result.user.role);
           }
 
-          const isDefaultPin = ['123456', '1111', '1234'].includes(pin);
+          const isDefaultPin = ['123456', '1111', '1234', '000000'].includes(pin);
           if (requiresNewPin || isDefaultPin) {
             setStep('new-pin');
             setNewPin('');
@@ -375,7 +375,7 @@ const Login: React.FC<LoginProps> = () => {
 
             await supabase
               .from('users')
-              .update({ requires_new_pin: false })
+              .update({ requires_new_pin: false, pin: newPin })
               .eq('id', currentUserId);
 
             if (isKioskMode) {
