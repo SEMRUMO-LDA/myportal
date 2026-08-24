@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserSession, UserRole } from '../types/auth';
 import { supabase } from '../services/supabaseClient';
 import { permissionService } from '../services/permissionService';
+import { isDemoMode, getDemoSession, getDemoUserById, demoUserToSession, clearDemoSession } from '../services/demoMode';
 
 interface AuthContextType {
     user: UserSession | null;
@@ -19,27 +20,30 @@ async function resolveUserSession(
     authId: string,
     email: string | undefined,
     accessToken: string
-): Promise<UserSession> {
-    // Fallback session (ADMIN) if DB lookup fails
-    const fallback: UserSession = {
-        id: authId,
-        name: email || 'Admin',
-        role: UserRole.ADMIN,
-        permissions: ['*'],
-        email: email || '',
-        token: accessToken
-    };
-
-    if (!email) return fallback;
+): Promise<UserSession | null> {
+    // SECURITY FIX: No more ADMIN fallback. If we can't resolve, return null.
+    if (!email) {
+        console.error('[AuthContext] Cannot resolve session: no email provided');
+        return null;
+    }
 
     try {
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+
         const { data: userData, error } = await supabase
             .from('users')
             .select('id, role, name')
             .eq('email', email)
             .single();
 
-        if (error || !userData) return fallback;
+        clearTimeout(timeout);
+
+        if (error || !userData) {
+            console.error('[AuthContext] User not found in DB for email:', email, error?.message);
+            return null;
+        }
 
         // Map DB role string to UserRole enum
         const dbRole = (userData.role || '').toUpperCase();
@@ -67,14 +71,13 @@ async function resolveUserSession(
         const numericId = Number(userData.id);
 
         // VALIDATION: userData.id from DB must ALWAYS be numeric (BigInt)
-        // If it's not, this is a critical error in the database schema
         if (isNaN(numericId) || numericId <= 0) {
             console.error(`[AuthContext] CRITICAL: Invalid user ID from database!`, {
                 rawId: userData.id,
                 email,
                 type: typeof userData.id
             });
-            throw new Error(`Invalid user ID in database for ${email}. Expected numeric ID, got: ${userData.id}`);
+            return null;
         }
 
         return {
@@ -87,7 +90,7 @@ async function resolveUserSession(
         };
     } catch (err) {
         console.error('[AuthContext] resolveUserSession error:', err);
-        return fallback;
+        return null;
     }
 }
 
@@ -98,8 +101,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         let isMounted = true;
 
-        // Single listener handles ALL auth events including INITIAL_SESSION.
-        // This eliminates the race condition between getSession() and onAuthStateChange.
+        // === DEMO MODE: Restore session from localStorage ===
+        if (isDemoMode()) {
+            const demoSession = getDemoSession();
+            if (demoSession) {
+                const demoUser = getDemoUserById(demoSession.userId);
+                if (demoUser) {
+                    console.log('[AuthContext] Demo mode: restoring session for', demoUser.name);
+                    setUser(demoUserToSession(demoUser));
+                }
+            }
+            setIsLoading(false);
+            return; // Don't subscribe to Supabase auth in demo mode
+        }
+
+        // === PRODUCTION: Supabase auth listener ===
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!isMounted) return;
             if (import.meta.env.DEV) console.log("AuthContext: Auth Change Event:", event);
@@ -111,7 +127,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     session.access_token
                 );
                 if (isMounted) {
-                    setUser(userSession);
+                    if (userSession) {
+                        setUser(userSession);
+                    } else {
+                        // Could not resolve user — don't grant ADMIN, show error state
+                        console.error('[AuthContext] Failed to resolve user session, signing out');
+                        setUser(null);
+                        // Don't auto sign-out here to avoid loops, let the UI handle it
+                    }
                     setIsLoading(false);
                 }
             } else {
@@ -134,6 +157,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const logout = async () => {
         try {
+            // Demo mode: just clear the session
+            if (isDemoMode()) {
+                clearDemoSession();
+                setUser(null);
+                window.location.hash = '/login';
+                return;
+            }
+
             // 1. Tentar fazer signOut no Supabase
             await supabase.auth.signOut().catch(e => console.warn('SignOut falhou:', e));
 

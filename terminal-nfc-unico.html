@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal NFC - SEMRUMO</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 30px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 20px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            opacity: 0.9;
+            font-size: 18px;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .clock {
+            font-size: 48px;
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .scan-instruction {
+            background: #f8f9fa;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            border: 3px dashed #667eea;
+        }
+
+        .nfc-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 0.7;
+            }
+        }
+
+        .instruction-text {
+            font-size: 24px;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .sub-text {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .status-message {
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            font-size: 18px;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+        }
+
+        .status-message.show {
+            display: block;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .status-message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+        }
+
+        .recent-logs {
+            margin-top: 40px;
+        }
+
+        .recent-logs h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .log-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .log-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .log-time {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .log-type {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .log-type.in {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .log-type.out {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+            font-size: 14px;
+            border-top: 1px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏢</div>
+            <h1>Terminal de Picagem</h1>
+            <div class="subtitle">SEMRUMO - Escritório Central</div>
+        </div>
+
+        <div class="content">
+            <div class="clock" id="clock">00:00:00</div>
+
+            <div class="scan-instruction">
+                <div class="nfc-icon">📱</div>
+                <div class="instruction-text">Aproxime o seu telemóvel</div>
+                <div class="sub-text">A tag NFC abrirá automaticamente o seu link pessoal</div>
+            </div>
+
+            <div id="statusMessage" class="status-message"></div>
+
+            <div class="recent-logs">
+                <h3>📋 Últimas Picagens</h3>
+                <div id="recentLogs"></div>
+            </div>
+        </div>
+
+        <div class="footer">
+            Sistema de Picagem NFC - SEMRUMO MyPortal<br>
+            Terminal Único de Identificação
+        </div>
+    </div>
+
+    <script>
+        // Atualizar relógio
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Simular últimas picagens (em produção viria do Supabase)
+        const recentLogs = [
+            { name: 'João Silva', time: '08:45', type: 'in' },
+            { name: 'Maria Santos', time: '08:42', type: 'in' },
+            { name: 'Pedro Costa', time: '08:38', type: 'in' }
+        ];
+
+        function updateRecentLogs() {
+            const container = document.getElementById('recentLogs');
+            container.innerHTML = recentLogs.map(log => `
+                <div class="log-entry">
+                    <div>
+                        <div class="log-name">${log.name}</div>
+                        <div class="log-time">${log.time}</div>
+                    </div>
+                    <div class="log-type ${log.type}">
+                        ${log.type === 'in' ? 'Entrada' : 'Saída'}
+                    </div>
+                </div>
+            `).join('');
+        }
+        updateRecentLogs();
+
+        // Mostrar mensagem de status
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = `status-message show ${type}`;
+
+            setTimeout(() => {
+                statusEl.classList.remove('show');
+            }, 3000);
+        }
+
+        // Detectar NFC (quando disponível)
+        if ('NDEFReader' in window) {
+            console.log('NFC disponível neste dispositivo');
+            // Código NFC aqui
+        } else {
+            console.log('NFC não suportado neste browser/dispositivo');
+        }
+    </script>
+</body>
+</html>

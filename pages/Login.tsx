@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ShieldCheck, UserCircle, ArrowRight, Loader2, Delete, ChevronLeft, Clock, LogIn, CheckCircle, WifiOff, Wifi, AlertTriangle, Building2, KeyRound, Info } from 'lucide-react';
 import { User as UserType, Company } from '../types';
@@ -10,24 +10,64 @@ import { isKioskAuthorized } from '../services/sessionService';
 import { kioskClockService } from '../services/kioskClockService';
 import PasswordRecoveryModal from '../components/PasswordRecoveryModal';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
+import { QuickLoader } from '../components/QuickLoader';
+import { versionService } from '../services/versionService';
+import { isDemoMode, getDemoUserById, validateDemoLogin, saveDemoSession, demoUserToSession } from '../services/demoMode';
 
 interface LoginProps {
   // onUpdateUser removido conforme solicitado
 }
 
 const Login: React.FC<LoginProps> = () => {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, login: authLogin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Ref to access login() inside useCallback without stale closures
+  const useAuthRef = useRef({ login: authLogin });
+  useEffect(() => { useAuthRef.current.login = authLogin; }, [authLogin]);
 
   // Kiosk Mode Detection
   const isKioskMode = location.search.includes('kiosk=true');
 
   // Login Type Toggle
   const [loginType, setLoginType] = useState<'colaborador' | 'administrador'>('colaborador');
+  const [initialCheckComplete, setInitialCheckComplete] = useState(false);
+
+  // Quick session check for faster redirect
+  useEffect(() => {
+    const quickSessionCheck = async () => {
+      // Quick check localStorage first (synchronous)
+      const cachedToken = localStorage.getItem('supabase.auth.token');
+
+      if (cachedToken && !isKioskMode) {
+        // Show quick loader while validating
+        setInitialCheckComplete(false);
+
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            // Quick redirect based on cached role if available
+            const cachedRole = localStorage.getItem('user_role');
+            if (cachedRole) {
+              const isAdminRole = ['ADMIN', 'Administrador', 'RH', 'Diretor de Unidade', 'Responsável de Departamento'].includes(cachedRole);
+              navigate(isAdminRole && loginType === 'administrador' ? '/admin' : '/portal', { replace: true });
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Quick session check failed:', error);
+        }
+      }
+
+      setInitialCheckComplete(true);
+    };
+
+    quickSessionCheck();
+  }, []);
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && initialCheckComplete) {
       if (isKioskMode) return;
 
       if (loginType === 'administrador') {
@@ -48,7 +88,7 @@ const Login: React.FC<LoginProps> = () => {
         navigate('/portal', { replace: true });
       }
     }
-  }, [user, authLoading, navigate, isKioskMode, loginType]);
+  }, [user, authLoading, navigate, isKioskMode, loginType, initialCheckComplete]);
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -163,49 +203,85 @@ const Login: React.FC<LoginProps> = () => {
     }
   };
 
-  const handleEmployeeSubmit = async () => {
+  const handleEmployeeSubmit = useCallback(async () => {
+    if (isLoggingIn) return; // Guard against double-submit
     setEmployeeError('');
 
     if (step === 'id') {
       if (!accessCode) return;
       const userId = parseInt(accessCode);
-      if (isNaN(userId)) {
+      if (isNaN(userId) || userId <= 0) {
         setEmployeeError('ID inválido.');
         return;
       }
 
       setIsLoggingIn(true);
       try {
-        // FLUXO DO STEP 'id' (Validar ID e obter Email via RPC Seguro)
-        const { data, error } = await supabase.rpc('get_user_for_login', { p_user_id: parseInt(accessCode) });
+        // === DEMO MODE: Bypass Supabase ===
+        if (isDemoMode()) {
+          const demoUser = getDemoUserById(userId);
+          if (!demoUser) {
+            setEmployeeError('Utilizador não encontrado.');
+            return;
+          }
 
-        if (error || !data || data.length === 0) {
+          // Validar permissões de admin
+          if (loginType === 'administrador') {
+            const normalizedRole = demoUser.role.toUpperCase();
+            const isAdmin = ['ADMIN', 'ADMINISTRADOR', 'RH', 'DIRETOR DE UNIDADE', 'RESPONSÁVEL DE DEPARTAMENTO'].includes(normalizedRole);
+            if (!isAdmin) {
+              setEmployeeError('Acesso restrito a administradores.');
+              return;
+            }
+          }
+
+          setUserEmail(demoUser.email);
+          setRequiresNewPin(demoUser.requiresNewPin);
+          setCurrentUserId(demoUser.id);
+          setStep('pin');
+          setPin('');
+          return;
+        }
+
+        // === PRODUCTION: Direct query with timeout (replaces fragile RPC) ===
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, email, role, requires_new_pin, status')
+          .eq('id', userId)
+          .eq('status', 'ACTIVE')
+          .single();
+
+        clearTimeout(timeout);
+
+        if (error || !data) {
           setEmployeeError('Utilizador não encontrado.');
           return;
         }
 
-        const user = data[0];
-
-        // Validar permissões de admin (se o toggle estiver em administrador)
+        // Validar permissões de admin
         if (loginType === 'administrador') {
-          const isAdmin = ['ADMIN', 'Administrador', 'RH', 'Diretor de Unidade', 'Responsável de Departamento'].includes(user.role);
+          const isAdmin = ['ADMIN', 'Administrador', 'RH', 'Diretor de Unidade', 'Responsável de Departamento'].includes(data.role);
           if (!isAdmin) {
             setEmployeeError('Acesso restrito a administradores.');
             return;
           }
         }
 
-        // Se o email vier vazio da DB, usamos o fallback
-        const email = user.email || `user${parseInt(accessCode)}@myportal.internal`;
-        
+        const email = data.email || `user${userId}@myportal.internal`;
         setUserEmail(email);
-        setRequiresNewPin(user.requires_new_pin);
-        setCurrentUserId(parseInt(accessCode));
-        // Nota: Nome do utilizador será obtido após o login bem-sucedido para manter RLS restrito
+        setRequiresNewPin(data.requires_new_pin);
+        setCurrentUserId(userId);
         setStep('pin');
         setPin('');
-      } catch (err) {
-        setEmployeeError('Erro de ligação.');
+      } catch (err: any) {
+        if (err?.name === 'AbortError') {
+          setEmployeeError('Servidor não respondeu. Tente novamente.');
+        } else {
+          setEmployeeError('Erro de ligação ao servidor.');
+        }
       } finally {
         setIsLoggingIn(false);
       }
@@ -213,25 +289,75 @@ const Login: React.FC<LoginProps> = () => {
       if (pin.length < 6) return;
 
       setIsLoggingIn(true);
-      // Rule 3: authService.login
-      const result = await authService.login({ email: userEmail, password: pin });
-      setIsLoggingIn(false);
+      try {
+        // === DEMO MODE: Local PIN validation ===
+        if (isDemoMode()) {
+          const result = validateDemoLogin(currentUserId!, pin);
+          if (result.success) {
+            setCurrentUserName(result.user.name);
+            saveDemoSession(result.user);
 
-      if (result.success) {
-        setCurrentUserName(result.user.name);
-        const isDefaultPin = ['123456', '1111', '1234'].includes(pin);
-        if (requiresNewPin || isDefaultPin) {
-          setStep('new-pin');
-          setNewPin('');
-        } else {
-          if (isKioskMode) {
-            performKioskAction(result.user);
+            // Cache role
+            localStorage.setItem('user_role', result.user.role);
+
+            const isDefaultPin = ['123456', '1111', '1234'].includes(pin);
+            if (requiresNewPin || isDefaultPin) {
+              setStep('new-pin');
+              setNewPin('');
+            } else {
+              // Trigger AuthContext login with demo session
+              const { login } = useAuthRef.current;
+              const session = demoUserToSession(result.user);
+              login(session);
+
+              if (isKioskMode) {
+                performKioskAction(result.user);
+              }
+            }
+          } else {
+            setEmployeeError(result.error);
+            setPin('');
           }
-          // Redirecionamento normal é via AuthContext useEffect
+          return;
         }
-      } else {
-        setEmployeeError(result.error || 'PIN Incorreto.');
+
+        // === PRODUCTION: Supabase Auth with timeout ===
+        const loginPromise = authService.login({ email: userEmail, password: pin });
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 10000)
+        );
+
+        const result = await Promise.race([loginPromise, timeoutPromise]) as any;
+
+        if (result.success) {
+          setCurrentUserName(result.user.name);
+
+          if (result.user.role) {
+            localStorage.setItem('user_role', result.user.role);
+          }
+
+          const isDefaultPin = ['123456', '1111', '1234'].includes(pin);
+          if (requiresNewPin || isDefaultPin) {
+            setStep('new-pin');
+            setNewPin('');
+          } else {
+            if (isKioskMode) {
+              performKioskAction(result.user);
+            }
+          }
+        } else {
+          setEmployeeError(result.error || 'PIN Incorreto.');
+          setPin('');
+        }
+      } catch (err: any) {
+        if (err?.message === 'timeout') {
+          setEmployeeError('Servidor demorou a responder. Tente novamente.');
+        } else {
+          setEmployeeError('Erro de ligação.');
+        }
         setPin('');
+      } finally {
+        setIsLoggingIn(false);
       }
     } else if (step === 'new-pin') {
       if (newPin.length === 6) {
@@ -268,15 +394,17 @@ const Login: React.FC<LoginProps> = () => {
         }
       }
     }
-  };
+  }, [step, accessCode, pin, newPin, confirmPin, isLoggingIn, loginType, userEmail, requiresNewPin, currentUserId, isKioskMode]);
 
+  // Auto-submit when PIN reaches 6 digits (with isLoggingIn guard)
   useEffect(() => {
+    if (isLoggingIn) return; // Prevent double-submit
     if ((step === 'pin' && pin.length === 6) ||
         (step === 'new-pin' && newPin.length === 6) ||
         (step === 'confirm-pin' && confirmPin.length === 6)) {
       handleEmployeeSubmit();
     }
-  }, [pin, newPin, confirmPin, step]);
+  }, [pin, newPin, confirmPin, step, isLoggingIn, handleEmployeeSubmit]);
 
   const handleBack = () => {
     if (step === 'confirm-pin') setStep('new-pin');
@@ -292,6 +420,17 @@ const Login: React.FC<LoginProps> = () => {
     if (step === 'confirm-pin') return confirmPin;
     return '';
   };
+
+  // Show quick loader during initial session check
+  if (!initialCheckComplete && !isKioskMode) {
+    return <QuickLoader />;
+  }
+
+  // Show quick loader while auth is loading and we have a user
+  if (authLoading && !isKioskMode) {
+    return <QuickLoader />;
+  }
+
   return (
     <div className="min-h-screen w-full bg-[#020a16] bg-gradient-to-br from-[#041d3d] to-[#020a16] flex flex-col items-center justify-center p-4 sm:p-6 overflow-y-auto overflow-x-hidden selection:bg-blue-500/30">
       {/* Kiosk Success Overlay */}
@@ -325,7 +464,7 @@ const Login: React.FC<LoginProps> = () => {
         <div className="flex items-center gap-4 sm:gap-8">
           <div className={`hidden sm:flex items-center gap-2.5 text-[10px] font-black px-4 py-2 rounded-full border ${isOnline ? 'text-[#14b8a6] bg-[#042f2e] border-[#14b8a6]/20' : 'text-orange-400 bg-orange-400/10 border-orange-400/20'} shadow-inner`}>
             <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-[#14b8a6] shadow-[0_0_8px_#14b8a6]' : 'bg-orange-400'}`}></span>
-            ONLINE <span className="text-white/30 ml-1">v56</span>
+            ONLINE <span className="text-white/30 ml-1">v{versionService.getBuildSequence()}</span>
           </div>
           <div className="text-white/90 text-4xl sm:text-6xl font-extralight tracking-tight tabular-nums">
             {currentTime.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
 import './src/index.css';
+import { isDemoMode } from './services/demoMode';
 import { HashRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Sidebar from './components/Sidebar';
@@ -78,11 +79,25 @@ const EmployeeFeedback = lazy(() => import('./pages/EmployeeFeedback'));
 const FleetBooking = lazy(() => import('./pages/FleetBooking'));
 
 // Loading Fallback Component
-const PageLoader = () => (
-  <div className="flex h-screen w-full items-center justify-center bg-gray-50">
-    <Loader2 className="h-10 w-10 text-brand-600 animate-spin" />
-  </div>
-);
+const PageLoader = () => {
+  const [showDebug, setShowDebug] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setShowDebug(true), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50">
+      <Loader2 className="h-10 w-10 text-brand-600 animate-spin mb-4" />
+      {showDebug && (
+        <div className="text-red-500 font-bold mt-4 text-center">
+          <p>PageLoader is stuck!</p>
+          <p className="text-sm text-gray-500">This usually means a lazy-loaded component failed to load, or the router is waiting for a Promise.</p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Layout Wrapper for Admin to handle Sidebar Context
 const AdminLayout = ({
@@ -255,12 +270,50 @@ function App() {
   const prevAuthUserIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (authUser && users.length > 0) {
-      const authUserId = Number(authUser.id);
-      const fullProfile = users.find(u => Number(u.id) === authUserId);
-
-      if (fullProfile) {
-        setCurrentUser(fullProfile);
+    if (authUser) {
+      try {
+        const authUserId = Number(authUser.id);
+        let targetProfile = users.find(u => Number(u.id) === authUserId);
+        
+        if (!targetProfile) {
+          console.log('[App] User not found in users array - creating minimal profile for:', authUser.name);
+          targetProfile = {
+            id: authUserId,
+            name: authUser.name,
+            email: authUser.email || '',
+            role: authUser.role,
+            company: Company.SEMRUMO,
+            status: UserStatus.ACTIVE,
+            created_at: new Date().toISOString(),
+            photoUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.name || 'user')}&background=random`,
+            attendanceConfig: DEFAULT_ATTENDANCE_CONFIG,
+            workStartTime: '09:00',
+            workEndTime: '18:00',
+            iban: '',
+            nif: '',
+            cc: '',
+            address: '',
+            birthDate: '',
+            admissionDate: new Date().toISOString().split('T')[0],
+            phone: '',
+            lunchStartTime: '13:00',
+            lunchEndTime: '14:00',
+            vacationDaysYearly: 0,
+            vacationDaysCarryover: 0,
+            vacationAdjustments: 0,
+            onboardingTasks: DEFAULT_ONBOARDING_TASKS,
+            documents: [],
+            department: '',
+            niss: '',
+            nationality: '',
+            mobilePhone: '',
+            whatsappEnabled: false,
+            locationIds: []
+          };
+        }
+        
+        console.log('[App] Setting currentUser successfully to:', targetProfile.name);
+        setCurrentUser(targetProfile);
 
         // CRITICAL FIX: Only trigger reload if user actually changed (prevents infinite loop)
         if (prevAuthUserIdRef.current !== authUserId) {
@@ -268,53 +321,11 @@ function App() {
           prevAuthUserIdRef.current = authUserId;
           setAuthSessionKey(prev => prev + 1);
         }
+      } catch (err) {
+        console.error('[App] ERROR in user sync useEffect:', err);
       }
-    } else if (authUser && users.length === 0) {
-      // CRITICAL FIX: If user logged in but users not loaded yet, create minimal profile
-      const authUserId = Number(authUser.id);
-
-      console.log('[App] User logged in but users array empty - creating minimal profile');
-      const minimalProfile: User = {
-        id: authUserId,
-        name: authUser.name,
-        email: authUser.email || '',
-        role: authUser.role,
-        company: Company.SEMRUMO,
-        status: UserStatus.ACTIVE,
-        created_at: new Date().toISOString(),
-        photoUrl: 'https://picsum.photos/200/200',
-        attendanceConfig: DEFAULT_ATTENDANCE_CONFIG,
-        workStartTime: '09:00',
-        workEndTime: '18:00',
-        iban: '',
-        nif: '',
-        cc: '',
-        address: '',
-        birthDate: '',
-        admissionDate: new Date().toISOString().split('T')[0],
-        phone: '',
-        lunchStartTime: '13:00',
-        lunchEndTime: '14:00',
-        vacationDaysYearly: 0,
-        vacationDaysCarryover: 0,
-        vacationAdjustments: 0,
-        onboardingTasks: DEFAULT_ONBOARDING_TASKS,
-        documents: [],
-        department: '',
-        niss: '',
-        nationality: '',
-        mobilePhone: '',
-        whatsappEnabled: false,
-        locationIds: []
-      };
-      setCurrentUser(minimalProfile);
-
-      // Only trigger reload if user actually changed
-      if (prevAuthUserIdRef.current !== authUserId) {
-        prevAuthUserIdRef.current = authUserId;
-        setAuthSessionKey(prev => prev + 1);
-      }
-    } else if (!authUser) {
+    } else {
+      console.log('[App] authUser is falsy, setting currentUser to null');
       setCurrentUser(null);
       prevAuthUserIdRef.current = null;
     }
@@ -356,61 +367,75 @@ function App() {
         // === PHASE 1: Load Users from Supabase ===
         // OPTIMIZATION: Select only essential fields for faster initial load
         // Full user data will be loaded in background after login is enabled
-        const usersRes = await supabase
-          .from('users')
-          .select('id, name, role, email, pin, status, company, department, work_start_time, work_end_time, photo_url, attendance_config')
-          .eq('status', 'ACTIVE')
-          .order('id', { ascending: true });
+        let currentUsersList: any[] = [];
+        
+        if (isDemoMode()) {
+          console.log('[App] 🟢 Demo Mode Active - Using mocked users');
+          const { getDemoUsers } = await import('./services/demoMode');
+          currentUsersList = getDemoUsers().map(u => ({
+             ...u,
+             status: 'ACTIVE',
+             photoUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=random`,
+             attendanceConfig: DEFAULT_ATTENDANCE_CONFIG,
+             created_at: new Date().toISOString(),
+          })) as any[];
+          setUsers(currentUsersList);
+        } else {
+          const usersRes = await supabase
+            .from('users')
+            .select('id, name, role, email, status, company, department, work_start_time, work_end_time, photo_url, attendance_config')
+            .eq('status', 'ACTIVE')
+            .order('id', { ascending: true });
 
-        let currentUsersList = [];
-        if (usersRes.data && usersRes.data.length > 0) {
-          const freshMappedUsers: User[] = usersRes.data.map((u: any) => ({
-            // Essential fields (loaded from DB)
-            id: u.id,
-            name: u.name || '',
-            role: u.role || '',
-            company: u.company as Company || Company.SEMRUMO,
-            email: u.email || '',
-            department: u.department || '',
-            status: u.status as UserStatus || UserStatus.ACTIVE,
-            photoUrl: u.photo_url || 'https://picsum.photos/200/200',
-            attendanceConfig: u.attendance_config || DEFAULT_ATTENDANCE_CONFIG,
-            workStartTime: u.work_start_time || '09:00',
-            workEndTime: u.work_end_time || '18:00',
-            pin: u.pin,
-            requiresNewPin: false, 
+          if (usersRes.data && usersRes.data.length > 0) {
+            const freshMappedUsers: User[] = usersRes.data.map((u: any) => ({
+              // Essential fields (loaded from DB)
+              id: u.id,
+              name: u.name || '',
+              role: u.role || '',
+              company: u.company as Company || Company.SEMRUMO,
+              email: u.email || '',
+              department: u.department || '',
+              status: u.status as UserStatus || UserStatus.ACTIVE,
+              photoUrl: u.photo_url || 'https://picsum.photos/200/200',
+              attendanceConfig: u.attendance_config || DEFAULT_ATTENDANCE_CONFIG,
+              workStartTime: u.work_start_time || '09:00',
+              workEndTime: u.work_end_time || '18:00',
+              pin: undefined,
+              requiresNewPin: false, 
 
-            // Default values for non-essential fields (optimized for fast load)
-            created_at: u.created_at || new Date().toISOString(),
-            iban: '',
-            nif: '',
-            cc: '',
-            address: '',
-            birthDate: '',
-            admissionDate: new Date().toISOString().split('T')[0],
-            phone: '',
-            emergencyContact: undefined,
-            bio: undefined,
-            onboardingTasks: DEFAULT_ONBOARDING_TASKS,
-            documents: [],
-            lunchStartTime: '13:00',
-            lunchEndTime: '14:00',
-            vacationDaysYearly: 0,
-            vacationDaysCarryover: 0,
-            vacationAdjustments: 0,
-            niss: '',
-            nationality: '',
-            maritalStatus: undefined,
-            mobilePhone: '',
-            whatsappEnabled: false,
-            locationId: undefined,
-            locationIds: [],
-            scheduleCycleStartDate: undefined
-          }));
-          currentUsersList = freshMappedUsers;
-          setUsers(freshMappedUsers);
-        } else if (usersRes.error) {
-          console.error('❌ [App] Supabase fetch failed:', usersRes.error);
+              // Default values for non-essential fields (optimized for fast load)
+              created_at: u.created_at || new Date().toISOString(),
+              iban: '',
+              nif: '',
+              cc: '',
+              address: '',
+              birthDate: '',
+              admissionDate: new Date().toISOString().split('T')[0],
+              phone: '',
+              emergencyContact: undefined,
+              bio: undefined,
+              onboardingTasks: DEFAULT_ONBOARDING_TASKS,
+              documents: [],
+              lunchStartTime: '13:00',
+              lunchEndTime: '14:00',
+              vacationDaysYearly: 0,
+              vacationDaysCarryover: 0,
+              vacationAdjustments: 0,
+              niss: '',
+              nationality: '',
+              maritalStatus: undefined,
+              mobilePhone: '',
+              whatsappEnabled: false,
+              locationId: undefined,
+              locationIds: [],
+              scheduleCycleStartDate: undefined
+            }));
+            currentUsersList = freshMappedUsers;
+            setUsers(freshMappedUsers);
+          } else if (usersRes.error) {
+            console.error('❌ [App] Supabase fetch failed:', usersRes.error);
+          }
         }
         
         const mappedUsers = currentUsersList;
@@ -429,6 +454,32 @@ function App() {
         const roleStr = (currentUser.role || '').toUpperCase();
         const canViewAllRecords = roleStr === 'ADMIN' || roleStr === 'AUDITOR' || roleStr === 'RH' || roleStr === 'RESPONSÁVEL DE DEPARTAMENTO';
         console.log(`[App] 🔐 User role: ${currentUser.role} | Can view all records: ${canViewAllRecords}`);
+
+        // === DEMO MODE EARLY RETURN ===
+        if (isDemoMode()) {
+           console.log('[App] 🟢 Demo Mode Active - Bypassing Phase 2 Supabase queries');
+           setTimeLogs([]);
+           setAbsences([]);
+           setLeaves([]);
+           setExpenses([]);
+           setEvents([]);
+           setMessages([]);
+           setLockedMonths([]);
+           setJobRoles([]);
+           setLeaveTypes([]);
+           setScheduleTemplates([]);
+           setSchedulePeriods([]);
+           setLocations([]);
+           setDepartments([]);
+           setHourBankAdjustments([]);
+           setAnomalies([]);
+           setHolidays([]);
+           setWhatsappAutoAlerts(false);
+           setSurveyResponses([]);
+           setAnonymousFeedbacks([]);
+           setDataReady(true);
+           return;
+        }
 
         // PRE-BUILD QUERIES TO FIX TYPESCRIPT POSTGREST BUILDERS
         // OPTIMIZATION: Prioritize today's logs for immediate attendance visibility
@@ -811,76 +862,96 @@ function App() {
     fetchData();
   }, [authSessionKey, currentUser?.id]);
 
-  // POLLING: Refresh critical tables every 15s to keep data fresh across sessions
+  // POLLING: Refresh critical tables every 60s to keep data fresh across sessions
   useEffect(() => {
     const refreshData = async () => {
       try {
-        // 1. Refresh Users (detect changes from other admins)
-        const { data: usersData } = await supabase.from('users').select('*').order('id', { ascending: true });
-        if (usersData) {
-          const mappedUsers: User[] = usersData.map((u: any) => ({
-            id: u.id,
-            name: u.name || '',
-            role: u.role || '',
-            company: u.company as Company || Company.SEMRUMO,
-            created_at: u.created_at,
-            email: u.email || '',
-            department: u.department || '',
-            iban: u.iban,
-            status: u.status as UserStatus || UserStatus.ACTIVE,
-            nif: u.nif || '',
-            cc: u.cc || '',
-            address: u.address || '',
-            birthDate: u.birth_date || '',
-            admissionDate: u.admission_date || new Date().toISOString().split('T')[0],
-            phone: u.phone || '',
-            photoUrl: u.photo_url || 'https://picsum.photos/200/200',
-            emergencyContact: u.emergency_contact,
-            bio: u.bio,
-            onboardingTasks: u.onboarding_tasks || DEFAULT_ONBOARDING_TASKS,
-            documents: u.documents || [],
-            attendanceConfig: u.attendance_config || DEFAULT_ATTENDANCE_CONFIG,
-            workStartTime: u.work_start_time || '09:00',
-            workEndTime: u.work_end_time || '18:00',
-            lunchStartTime: u.lunch_start_time || '13:00',
-            lunchEndTime: u.lunch_end_time || '14:00',
-            vacationDaysYearly: u.vacation_days_yearly,
-            vacationDaysCarryover: u.vacation_days_carryover,
-            vacationAdjustments: u.vacation_adjustments,
-            pin: u.pin,
-            requiresNewPin: u.requires_new_pin,
-            niss: u.niss,
-            nationality: u.nationality,
-            maritalStatus: u.marital_status,
-            mobilePhone: u.mobile_phone,
-            whatsappEnabled: u.whatsapp_enabled,
-            locationId: u.location_id,
-            locationIds: u.location_ids || [],
-            scheduleTemplateId: u.schedule_template_id,
-            scheduleCycleStartDate: u.schedule_cycle_start_date
-          }));
-          setUsers(mappedUsers);
+        if (!currentUser) return;
+        const roleStr = (currentUser.role || '').toUpperCase();
+        const canViewAllRecords = roleStr === 'ADMIN' || roleStr === 'AUDITOR' || roleStr === 'RH' || roleStr === 'RESPONSÁVEL DE DEPARTAMENTO';
 
-          // Keep currentUser in sync
-          if (currentUser) {
+        let latestUsers = users;
+
+        // 1. Refresh Users (detect changes from other admins) - ONLY for admins
+        if (canViewAllRecords) {
+          const { data: usersData } = await supabase.from('users').select('id, name, role, company, created_at, email, department, iban, status, nif, cc, address, birth_date, admission_date, phone, photo_url, emergency_contact, bio, onboarding_tasks, documents, attendance_config, work_start_time, work_end_time, lunch_start_time, lunch_end_time, vacation_days_yearly, vacation_days_carryover, vacation_adjustments, requires_new_pin, niss, nationality, marital_status, mobile_phone, whatsapp_enabled, location_id, location_ids, schedule_template_id, schedule_cycle_start_date').order('id', { ascending: true });
+          if (usersData) {
+            const mappedUsers: User[] = usersData.map((u: any) => ({
+              id: u.id,
+              name: u.name || '',
+              role: u.role || '',
+              company: u.company as Company || Company.SEMRUMO,
+              created_at: u.created_at,
+              email: u.email || '',
+              department: u.department || '',
+              iban: u.iban,
+              status: u.status as UserStatus || UserStatus.ACTIVE,
+              nif: u.nif || '',
+              cc: u.cc || '',
+              address: u.address || '',
+              birthDate: u.birth_date || '',
+              admissionDate: u.admission_date || new Date().toISOString().split('T')[0],
+              phone: u.phone || '',
+              photoUrl: u.photo_url || 'https://picsum.photos/200/200',
+              emergencyContact: u.emergency_contact,
+              bio: u.bio,
+              onboardingTasks: u.onboarding_tasks || DEFAULT_ONBOARDING_TASKS,
+              documents: u.documents || [],
+              attendanceConfig: u.attendance_config || DEFAULT_ATTENDANCE_CONFIG,
+              workStartTime: u.work_start_time || '09:00',
+              workEndTime: u.work_end_time || '18:00',
+              lunchStartTime: u.lunch_start_time || '13:00',
+              lunchEndTime: u.lunch_end_time || '14:00',
+              vacationDaysYearly: u.vacation_days_yearly,
+              vacationDaysCarryover: u.vacation_days_carryover,
+              vacationAdjustments: u.vacation_adjustments,
+              pin: undefined, // PIN is not loaded in polling for security
+              requiresNewPin: u.requires_new_pin,
+              niss: u.niss,
+              nationality: u.nationality,
+              maritalStatus: u.marital_status,
+              mobilePhone: u.mobile_phone,
+              whatsappEnabled: u.whatsapp_enabled,
+              locationId: u.location_id,
+              locationIds: u.location_ids || [],
+              scheduleTemplateId: u.schedule_template_id,
+              scheduleCycleStartDate: u.schedule_cycle_start_date
+            }));
+            setUsers(mappedUsers);
+            latestUsers = mappedUsers;
+
+            // Keep currentUser in sync
             const fresh = mappedUsers.find(u => u.id === currentUser.id);
             if (fresh) setCurrentUser(fresh);
           }
+        } else {
+            // Keep currentUser in sync without fetching all users
+            const { data: freshUser } = await supabase.from('users').select('id, name, role, company, created_at, email, department, iban, status, nif, cc, address, birth_date, admission_date, phone, photo_url, emergency_contact, bio, onboarding_tasks, documents, attendance_config, work_start_time, work_end_time, lunch_start_time, lunch_end_time, vacation_days_yearly, vacation_days_carryover, vacation_adjustments, requires_new_pin, niss, nationality, marital_status, mobile_phone, whatsapp_enabled, location_id, location_ids, schedule_template_id, schedule_cycle_start_date').eq('id', currentUser.id).single();
+            if (freshUser) {
+                const updatedCurrentUser: User = { ...currentUser, ...freshUser, pin: undefined };
+                setCurrentUser(updatedCurrentUser);
+                const updatedUsers = users.map(u => u.id === currentUser.id ? updatedCurrentUser : u);
+                setUsers(updatedUsers);
+                latestUsers = updatedUsers;
+            }
         }
 
         // 2. Refresh Logs (OPTIMIZED: Only load last 7 days like initial load)
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         const recentDateFilter = sevenDaysAgo.toISOString().split('T')[0];
-        const { data: logsData } = await supabase.from('time_logs').select('*')
+        let logsQuery = supabase.from('time_logs').select('*')
           .gte('date', recentDateFilter)
           .order('date', { ascending: false })
           .order('check_in', { ascending: false });
+          
+        if (!canViewAllRecords) {
+            logsQuery = logsQuery.eq('user_id', currentUser.id);
+        }
+        
+        const { data: logsData } = await logsQuery;
+        
         if (logsData) {
-          console.log(`[Polling] 🔄 Refreshed ${logsData.length} logs`);
-          const today = new Date().toISOString().split('T')[0];
-          const todayCount = logsData.filter((l: any) => l.date === today).length;
-          console.log(`[Polling] 📊 Today: ${todayCount} logs`);
           const mappedLogs: TimeLog[] = logsData.map((l: any) => ({
             id: l.id,
             userId: l.user_id,
@@ -902,7 +973,12 @@ function App() {
         }
 
         // 3. Refresh Leaves
-        const { data: leavesData } = await supabase.from('leaves').select('*').order('start_date', { ascending: false });
+        let leavesQuery = supabase.from('leaves').select('*').order('start_date', { ascending: false });
+        if (!canViewAllRecords) {
+            leavesQuery = leavesQuery.eq('user_id', currentUser.id);
+        }
+        const { data: leavesData } = await leavesQuery;
+        
         if (leavesData) {
           const mappedLeaves: Leave[] = leavesData.map((l: any) => ({
             id: l.id,
@@ -924,10 +1000,9 @@ function App() {
           setLeaves(mappedLeaves);
 
           // Update Legacy Absences
-          const latestUsers = usersData ? usersData : [];
           const mappedAbsences: Absence[] = leavesData.map((l: any) => {
             const lt = leaveTypes.find(t => t.id === l.leave_type_id);
-            const user = latestUsers.find((u: any) => u.id === l.user_id) || users.find(u => u.id === l.user_id);
+            const user = latestUsers.find((u: any) => u.id === l.user_id);
 
             return {
               id: l.id,
@@ -948,7 +1023,10 @@ function App() {
         const ninetyDaysAgo = new Date();
         ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
         const dateFilter = ninetyDaysAgo.toISOString().split('T')[0];
-        const { data: anomaliesData } = await supabase.from('anomalies').select('*').gte('created_at', dateFilter).order('created_at', { ascending: false });
+        let anomaliesQuery = supabase.from('anomalies').select('*').gte('created_at', dateFilter).order('created_at', { ascending: false });
+        if (!canViewAllRecords) anomaliesQuery = anomaliesQuery.eq('user_id', currentUser.id).limit(100);
+        
+        const { data: anomaliesData } = await anomaliesQuery;
         if (anomaliesData) {
           setAnomalies(anomaliesData.map((a: any) => ({
             id: a.id,
@@ -976,7 +1054,7 @@ function App() {
       }
     };
 
-    const interval = setInterval(refreshData, 15000);
+    const interval = setInterval(refreshData, 60000);
     return () => clearInterval(interval);
   }, [leaveTypes, currentUser]);
 
@@ -3702,7 +3780,22 @@ const AppRoutes = ({ users, loading, dataReady, absences, timeLogs, expenses, me
                     />
                   )}
                 </ResilientKioskWrapper>
-              ) : <PageLoader />
+              ) : (
+                <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 text-red-500">
+                  <div className="h-10 w-10 animate-spin mb-4 border-b-2 border-red-500 rounded-full" />
+                  <h1 className="text-2xl font-bold">DEBUG: Portal Blocked</h1>
+                  <p>currentUser is NULL in App.tsx Router!</p>
+                  <pre className="mt-4 bg-gray-200 p-4 rounded text-xs text-black text-left w-96 overflow-auto">
+                    {JSON.stringify({
+                      usersLength: users.length,
+                      dataReady,
+                      hasAuthUser: !!user,
+                      authUserId: user?.id,
+                      authUserName: user?.name,
+                    }, null, 2)}
+                  </pre>
+                </div>
+              )
             } />
 
 
@@ -3719,7 +3812,13 @@ const AppRoutes = ({ users, loading, dataReady, absences, timeLogs, expenses, me
                 >
                   <Outlet />
                 </CollaboratorLayout>
-              ) : <PageLoader />
+              ) : (
+                <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 text-orange-500">
+                  <div className="h-10 w-10 animate-spin mb-4 border-b-2 border-orange-500 rounded-full" />
+                  <h1 className="text-2xl font-bold">DEBUG: CollaboratorLayout Blocked</h1>
+                  <p>currentUser is NULL in App.tsx Router!</p>
+                </div>
+              )
             }>
               <Route path="profile" element={<MyProfile user={currentUser!} absences={absences} departments={departments} users={users} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} onUpdate={onUpdateUser} onAddAbsence={onAddAbsence} anomalies={anomalies} onUpdateAnomaly={onUpdateAnomaly} timeLogs={timeLogs} leaves={leaves} />} />
               <Route path="attendance" element={<EmployeeAttendance user={currentUser!} logs={timeLogs} leaves={leaves} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} />} />

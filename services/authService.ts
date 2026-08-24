@@ -3,6 +3,7 @@ import { UserRole } from '../types/auth';
 import { clearIdCache } from './idResolver';
 import { IdValidator, ensureNumericId } from '../utils/idValidator';
 import { normalizeRoleName, isAdminRole } from '../utils/authUtils';
+import { isDemoMode } from './demoMode';
 
 export interface LoginCredentials {
   email: string;
@@ -23,8 +24,14 @@ export interface UserData {
 class AuthService {
   /**
    * Login com email e password
+   * Includes retry with backoff for transient errors
    */
-  async login(credentials: LoginCredentials) {
+  async login(credentials: LoginCredentials, retryCount = 0): Promise<any> {
+    // Demo mode: login is handled directly in Login.tsx
+    if (isDemoMode()) {
+      return { success: false, error: 'Demo mode: use Login.tsx flow' };
+    }
+
     try {
       // 1. Autenticar com Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -33,6 +40,19 @@ class AuthService {
       });
 
       if (authError) {
+        // Retry once on transient errors (network, 5xx)
+        const isTransient = authError.message?.includes('fetch') ||
+                           authError.message?.includes('network') ||
+                           authError.status === 500 ||
+                           authError.status === 502 ||
+                           authError.status === 503;
+
+        if (isTransient && retryCount < 1) {
+          console.warn(`[AuthService] Transient error, retrying in 1s... (attempt ${retryCount + 1})`);
+          await new Promise(r => setTimeout(r, 1000));
+          return this.login(credentials, retryCount + 1);
+        }
+
         console.error('Erro de autenticação:', authError);
         throw new Error('Email ou password incorretos');
       }

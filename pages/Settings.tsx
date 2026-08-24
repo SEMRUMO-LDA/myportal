@@ -21,7 +21,7 @@ const Settings: React.FC = () => {
     // LLM Provider State
     const [llmProvider, setLlmProvider] = useState<'gemini' | 'ollama'>('gemini');
     const [geminiApiKey, setGeminiApiKey] = useState(import.meta.env.VITE_GEMINI_API_KEY || '');
-    const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
+    const [ollamaUrl, setOllamaUrl] = useState(''); // NEVER use localhost in production
     const [llmConnected, setLlmConnected] = useState(!!import.meta.env.VITE_GEMINI_API_KEY);
     const [isSavingLlm, setIsSavingLlm] = useState(false);
 
@@ -631,7 +631,7 @@ const Settings: React.FC = () => {
                                             type="text"
                                             value={ollamaUrl}
                                             onChange={(e) => setOllamaUrl(e.target.value)}
-                                            placeholder="ex: http://localhost:11434"
+                                            placeholder="URL do servidor Ollama (apenas para uso local)"
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                                         />
                                     </div>

@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Picagem Móvel - SEMRUMO</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 500px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 15px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .company {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .clock {
+            font-size: 56px;
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-weight: 200;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .login-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+            letter-spacing: 10px;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .button-container {
+            display: none;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .button-container.show {
+            display: flex;
+        }
+
+        .clock-button {
+            flex: 1;
+            padding: 25px;
+            border: none;
+            border-radius: 15px;
+            font-size: 20px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .clock-button .icon {
+            font-size: 40px;
+        }
+
+        .clock-in {
+            background: linear-gradient(135deg, #00c853, #00e676);
+            color: white;
+        }
+
+        .clock-in:active {
+            transform: scale(0.95);
+        }
+
+        .clock-out {
+            background: linear-gradient(135deg, #ff3d00, #ff6e40);
+            color: white;
+        }
+
+        .clock-out:active {
+            transform: scale(0.95);
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+
+        .login-button:active {
+            transform: scale(0.98);
+        }
+
+        .user-info {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .user-info.show {
+            display: block;
+        }
+
+        .user-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .user-role {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 20px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .last-clock {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏢</div>
+            <h1>Picagem Móvel</h1>
+            <div class="company">SEMRUMO MyPortal</div>
+        </div>
+
+        <div class="content">
+            <div class="clock" id="clock">00:00:00</div>
+
+            <div id="loginSection" class="login-section">
+                <div class="input-group">
+                    <label for="userId">Código de Colaborador</label>
+                    <input type="number"
+                           id="userId"
+                           placeholder="0000"
+                           maxlength="4"
+                           inputmode="numeric"
+                           autocomplete="off">
+                </div>
+
+                <div class="input-group">
+                    <label for="pin">PIN de Segurança</label>
+                    <input type="number"
+                           id="pin"
+                           placeholder="••••••"
+                           maxlength="6"
+                           inputmode="numeric"
+                           autocomplete="off">
+                </div>
+
+                <button class="login-button" onclick="login()">
+                    Entrar
+                </button>
+            </div>
+
+            <div id="userInfo" class="user-info">
+                <div class="user-name" id="userName">-</div>
+                <div class="user-role" id="userRole">-</div>
+            </div>
+
+            <div id="buttonContainer" class="button-container">
+                <button class="clock-button clock-in" onclick="clockIn()">
+                    <span class="icon">🟢</span>
+                    <span>Entrada</span>
+                </button>
+                <button class="clock-button clock-out" onclick="clockOut()">
+                    <span class="icon">🔴</span>
+                    <span>Saída</span>
+                </button>
+            </div>
+
+            <div id="status" class="status"></div>
+
+            <div id="lastClock" class="last-clock"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://imfhacvrivasciftaujm.supabase.co';
+        const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImltZmhhY3ZyaXZhc2NpZnRhdWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNTc0MjUsImV4cCI6MjA4NDczMzQyNX0.Y47GlWAZP-bObKVXKXRWvc93ljkA9-_ccqaCtvej_Bs';
+
+        let currentUser = null;
+
+        // Relógio
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Auto-focus no primeiro campo
+        window.onload = () => {
+            document.getElementById('userId').focus();
+        };
+
+        // Login
+        async function login() {
+            const userId = document.getElementById('userId').value;
+            const pin = document.getElementById('pin').value;
+
+            if (!userId || !pin) {
+                showStatus('Por favor preencha todos os campos', 'error');
+                return;
+            }
+
+            showStatus('A validar... <span class="loading"></span>', 'info');
+
+            try {
+                // Buscar utilizador
+                const response = await fetch(`${API_URL}/rest/v1/users?id=eq.${userId}&pin=eq.${pin}`, {
+                    headers: {
+                        'apikey': ANON_KEY,
+                        'Authorization': 'Bearer ' + ANON_KEY
+                    }
+                });
+
+                const users = await response.json();
+
+                if (users && users.length > 0) {
+                    currentUser = users[0];
+
+                    // Mostrar informação do utilizador
+                    document.getElementById('userName').textContent = currentUser.name;
+                    document.getElementById('userRole').textContent = currentUser.role || 'Colaborador';
+
+                    // Esconder login, mostrar botões
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('userInfo').classList.add('show');
+                    document.getElementById('buttonContainer').classList.add('show');
+
+                    // Limpar status
+                    document.getElementById('status').classList.remove('show');
+
+                    // Carregar última picagem
+                    loadLastClock();
+                } else {
+                    showStatus('❌ Código ou PIN incorreto', 'error');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showStatus('❌ Erro ao validar credenciais', 'error');
+            }
+        }
+
+        // Mostrar status
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.innerHTML = message;
+            statusEl.className = 'status show ' + type;
+
+            if (type !== 'info') {
+                setTimeout(() => {
+                    statusEl.classList.remove('show');
+                }, 5000);
+            }
+        }
+
+        // Registar entrada
+        async function clockIn() {
+            if (!currentUser) return;
+
+            showStatus('A registar entrada... <span class="loading"></span>', 'info');
+
+            try {
+                const response = await fetch(`${API_URL}/rest/v1/time_logs`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': ANON_KEY,
+                        'Authorization': 'Bearer ' + ANON_KEY,
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify({
+                        user_id: currentUser.id,
+                        clock_in: new Date().toISOString(),
+                        type: 'IN',
+                        clock_in_method: 'NFC_MOBILE',
+                        gps_address: 'Escritório - Terminal NFC'
+                    })
+                });
+
+                if (response.ok) {
+                    showStatus('✅ Entrada registada com sucesso!', 'success');
+                    updateLastClock('Entrada às ' + new Date().toLocaleTimeString('pt-PT'));
+
+                    // Fazer logout após 3 segundos
+                    setTimeout(logout, 3000);
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.message);
+                }
+            } catch (error) {
+                showStatus('❌ Erro ao registar entrada', 'error');
+                console.error(error);
+            }
+        }
+
+        // Registar saída
+        async function clockOut() {
+            if (!currentUser) return;
+
+            showStatus('A registar saída... <span class="loading"></span>', 'info');
+
+            try {
+                // Buscar última entrada
+                const getResponse = await fetch(
+                    `${API_URL}/rest/v1/time_logs?user_id=eq.${currentUser.id}&clock_out=is.null&order=clock_in.desc&limit=1`,
+                    {
+                        headers: {
+                            'apikey': ANON_KEY,
+                            'Authorization': 'Bearer ' + ANON_KEY
+                        }
+                    }
+                );
+
+                const logs = await getResponse.json();
+
+                if (logs && logs.length > 0) {
+                    // Atualizar com saída
+                    const response = await fetch(`${API_URL}/rest/v1/time_logs?id=eq.${logs[0].id}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': ANON_KEY,
+                            'Authorization': 'Bearer ' + ANON_KEY
+                        },
+                        body: JSON.stringify({
+                            clock_out: new Date().toISOString(),
+                            type: 'OUT',
+                            clock_out_method: 'NFC_MOBILE'
+                        })
+                    });
+
+                    if (response.ok) {
+                        showStatus('✅ Saída registada com sucesso!', 'success');
+                        updateLastClock('Saída às ' + new Date().toLocaleTimeString('pt-PT'));
+
+                        // Fazer logout após 3 segundos
+                        setTimeout(logout, 3000);
+                    } else {
+                        throw new Error('Erro ao registar saída');
+                    }
+                } else {
+                    showStatus('⚠️ Não há entrada registada para fazer saída', 'error');
+                }
+            } catch (error) {
+                showStatus('❌ Erro ao registar saída', 'error');
+                console.error(error);
+            }
+        }
+
+        // Carregar última picagem
+        async function loadLastClock() {
+            if (!currentUser) return;
+
+            try {
+                const response = await fetch(
+                    `${API_URL}/rest/v1/time_logs?user_id=eq.${currentUser.id}&order=created_at.desc&limit=1`,
+                    {
+                        headers: {
+                            'apikey': ANON_KEY,
+                            'Authorization': 'Bearer ' + ANON_KEY
+                        }
+                    }
+                );
+
+                const logs = await response.json();
+
+                if (logs && logs.length > 0) {
+                    const log = logs[0];
+                    const type = log.clock_out ? 'Saída' : 'Entrada';
+                    const time = new Date(log.clock_out || log.clock_in);
+                    updateLastClock(`Última: ${type} às ${time.toLocaleTimeString('pt-PT')}`);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar última picagem:', error);
+            }
+        }
+
+        // Atualizar última picagem
+        function updateLastClock(text) {
+            document.getElementById('lastClock').textContent = text;
+        }
+
+        // Logout
+        function logout() {
+            currentUser = null;
+            document.getElementById('userId').value = '';
+            document.getElementById('pin').value = '';
+            document.getElementById('loginSection').style.display = 'flex';
+            document.getElementById('userInfo').classList.remove('show');
+            document.getElementById('buttonContainer').classList.remove('show');
+            document.getElementById('status').classList.remove('show');
+            document.getElementById('lastClock').textContent = '';
+            document.getElementById('userId').focus();
+        }
+
+        // Enter para login
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !currentUser) {
+                login();
+            }
+        });
+
+        // Avançar para PIN quando digitar 4 dígitos no ID
+        document.getElementById('userId').addEventListener('input', (e) => {
+            if (e.target.value.length === 4) {
+                document.getElementById('pin').focus();
+            }
+        });
+
+        // Login automático quando digitar 6 dígitos no PIN
+        document.getElementById('pin').addEventListener('input', (e) => {
+            if (e.target.value.length === 6) {
+                login();
+            }
+        });
+    </script>
+</body>
+</html>
