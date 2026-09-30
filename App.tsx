@@ -490,7 +490,7 @@ function App() {
 
         // Check if user should see all records (not just their own)
         const roleStr = (resolvedUser.role || '').toUpperCase();
-        const canViewAllRecords = roleStr === 'ADMIN' || roleStr === 'AUDITOR' || roleStr === 'RH' || roleStr === 'RESPONSÁVEL DE DEPARTAMENTO';
+        const canViewAllRecords = roleStr === 'ADMIN' || roleStr === 'ADMINISTRADOR' || roleStr === 'AUDITOR' || roleStr === 'RH' || roleStr === 'RESPONSÁVEL DE DEPARTAMENTO' || roleStr === 'DIRETOR DE UNIDADE';
         console.log(`[App] 🔐 User: ${resolvedUser.name} (${resolvedUser.id}) | Role: ${resolvedUser.role} | Can view all records: ${canViewAllRecords}`);
 
         // === DEMO MODE EARLY RETURN ===
@@ -906,7 +906,7 @@ function App() {
       try {
         if (!currentUser) return;
         const roleStr = (currentUser.role || '').toUpperCase();
-        const canViewAllRecords = roleStr === 'ADMIN' || roleStr === 'AUDITOR' || roleStr === 'RH' || roleStr === 'RESPONSÁVEL DE DEPARTAMENTO';
+        const canViewAllRecords = roleStr === 'ADMIN' || roleStr === 'ADMINISTRADOR' || roleStr === 'AUDITOR' || roleStr === 'RH' || roleStr === 'RESPONSÁVEL DE DEPARTAMENTO' || roleStr === 'DIRETOR DE UNIDADE';
 
         let latestUsers = users;
 
