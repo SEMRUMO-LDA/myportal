@@ -53,28 +53,7 @@ const Login: React.FC<LoginProps> = () => {
     } catch {}
   };
 
-  // Redirect if already authenticated (background check without blocking keypad UI)
-  useEffect(() => {
-    if (!authLoading && user && !isKioskMode) {
-      if (loginType === 'administrador') {
-        const isAdminUser = user.role === UserRole.ADMIN ||
-                           user.role === 'Administrador' ||
-                           user.role === 'RH' ||
-                           user.role === 'Diretor de Unidade' ||
-                           user.role === 'Responsável de Departamento';
 
-        if (isAdminUser) {
-          navigate('/admin', { replace: true });
-        } else if (user.role === UserRole.AUDITOR) {
-          navigate('/auditor', { replace: true });
-        } else {
-          navigate('/portal', { replace: true });
-        }
-      } else {
-        navigate('/portal', { replace: true });
-      }
-    }
-  }, [user, authLoading, navigate, isKioskMode, loginType]);
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginType, setLoginType] = useState<'colaborador' | 'administrador'>('colaborador');
@@ -104,6 +83,29 @@ const Login: React.FC<LoginProps> = () => {
   // Status State
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // Redirect if already authenticated (background check without blocking keypad UI)
+  useEffect(() => {
+    if (!authLoading && user && !isKioskMode) {
+      if (loginType === 'administrador') {
+        const isAdminUser = user.role === UserRole.ADMIN ||
+                           user.role === 'Administrador' ||
+                           user.role === 'RH' ||
+                           user.role === 'Diretor de Unidade' ||
+                           user.role === 'Responsável de Departamento';
+
+        if (isAdminUser) {
+          navigate('/admin', { replace: true });
+        } else if (user.role === UserRole.AUDITOR) {
+          navigate('/auditor', { replace: true });
+        } else {
+          navigate('/portal', { replace: true });
+        }
+      } else {
+        navigate('/portal', { replace: true });
+      }
+    }
+  }, [user, authLoading, navigate, isKioskMode, loginType]);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
