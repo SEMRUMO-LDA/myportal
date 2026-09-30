@@ -25,6 +25,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
     public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
         // Log usando nosso sistema centralizado
+        console.error('ERROR BOUNDARY CAUGHT:', error);
         errorHandler.handleSilent(error, 'ErrorBoundary');
 
         // Callback personalizado (ex: enviar para Sentry)
@@ -68,11 +69,11 @@ export class ErrorBoundary extends Component<Props, State> {
                             </p>
                         </div>
 
-                        {import.meta.env.DEV && this.state.error && (
+                        {this.state.error && (
                             <div className="mb-6">
                                 <details className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
                                     <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-gray-700 hover:bg-gray-100">
-                                        Detalhes técnicos (DEV)
+                                        Detalhes técnicos
                                     </summary>
                                     <div className="px-4 py-3 border-t border-gray-200 space-y-2">
                                         <div>

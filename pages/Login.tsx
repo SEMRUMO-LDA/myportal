@@ -77,6 +77,7 @@ const Login: React.FC<LoginProps> = () => {
   }, [user, authLoading, navigate, isKioskMode, loginType]);
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginType, setLoginType] = useState<'colaborador' | 'administrador'>('colaborador');
 
   // Employee & Admin Shared Login State (Numpad)
   const [step, setStep] = useState<'id' | 'pin' | 'new-pin' | 'confirm-pin'>('id');
