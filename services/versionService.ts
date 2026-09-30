@@ -17,19 +17,18 @@ class VersionService {
    */
   private async loadVersion() {
     try {
-      const response = await fetch('/version.json?t=' + Date.now());
-      if (response.ok) {
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const versionUrl = `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}version.json`;
+      const response = await fetch(versionUrl, { cache: 'no-cache' }).catch(() => null);
+      if (response && response.ok) {
         const data = await response.json();
-        this.version = data.version || '1.0.0';
+        this.version = data.version || '2.56.0';
         this.buildNumber = data.buildNumber || this.generateBuildNumber();
         this.buildDate = data.buildDate || new Date().toISOString();
       } else {
-        // Fallback to generated build number
         this.buildNumber = this.generateBuildNumber();
       }
-    } catch (error) {
-      console.error('Failed to load version:', error);
-      // Use fallback
+    } catch {
       this.buildNumber = this.generateBuildNumber();
     }
   }
@@ -53,30 +52,14 @@ class VersionService {
    * Get formatted version string
    */
   getVersionString(): string {
-    // Use sequential build number for display
-    const buildNum = this.getBuildSequence();
-    return `v${buildNum}`;
+    return 'V1.25';
   }
 
   /**
-   * Get sequential build number from localStorage
-   * Increments on each deploy
+   * Get sequential build number / version tag for display
    */
-  private getBuildSequence(): number {
-    const stored = localStorage.getItem('app_build_number');
-    const currentBuild = this.buildNumber;
-    const lastBuild = localStorage.getItem('last_build_id');
-
-    // If build ID changed, increment sequence
-    if (lastBuild !== currentBuild) {
-      const sequence = stored ? parseInt(stored) + 1 : 114; // Start from v114 (after current v113)
-      localStorage.setItem('app_build_number', String(sequence));
-      localStorage.setItem('last_build_id', currentBuild);
-      return sequence;
-    }
-
-    // Return current sequence
-    return stored ? parseInt(stored) : 114;
+  getBuildSequence(): string {
+    return '1.25';
   }
 
   /**

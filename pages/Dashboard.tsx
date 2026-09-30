@@ -65,7 +65,7 @@ const Dashboard: React.FC<DashboardProps> = ({ users, absences, logs, events, an
 
         // 4. Working Now (CheckIn, No CheckOut - ignoring todayStr to include overnight shifts)
         const workingNow = logs.filter(l => l.checkIn && !l.checkOut).map(l => {
-            const user = users.find(u => u.id === l.userId);
+            const user = users.find(u => Number(u.id) === Number(l.userId));
             return {
                 ...l,
                 userName: user?.name,
@@ -82,7 +82,7 @@ const Dashboard: React.FC<DashboardProps> = ({ users, absences, logs, events, an
         });
 
         const absentPeople = absentToday.map(a => {
-            const user = users.find(u => u.id === a.userId);
+            const user = users.find(u => Number(u.id) === Number(a.userId));
             return { ...a, userPhoto: user?.photoUrl };
         });
 
@@ -91,8 +91,8 @@ const Dashboard: React.FC<DashboardProps> = ({ users, absences, logs, events, an
 
         // 6. Missing (No Log + No Leave)
         const missingPeople = activeUsers.filter(u => {
-            const hasLog = logs.some(l => l.userId === u.id && l.date === todayStr);
-            const hasLeave = absentToday.some(a => a.userId === u.id);
+            const hasLog = logs.some(l => Number(l.userId) === Number(u.id) && l.date === todayStr);
+            const hasLeave = absentToday.some(a => Number(a.userId) === Number(u.id));
             return !hasLog && !hasLeave;
         }).map(u => ({
             userId: u.id,

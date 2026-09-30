@@ -69,7 +69,7 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, absences, departments = [],
 
   // Filter anomalies awaiting justification from this user
   const pendingJustifications = useMemo(() => {
-    return anomalies.filter(a => a.userId === user.id && a.status === 'AWAITING_JUSTIFICATION');
+    return anomalies.filter(a => Number(a.userId) === Number(user.id) && a.status === 'AWAITING_JUSTIFICATION');
   }, [anomalies, user.id]);
 
   const handleSubmitJustification = async (anomaly: Anomaly) => {
@@ -198,7 +198,7 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, absences, departments = [],
 
   // Filter absences for this user
   const myAbsences = useMemo(() => {
-    return absences.filter(a => a.userId === user.id);
+    return absences.filter(a => Number(a.userId) === Number(user.id));
   }, [absences, user.id]);
 
   // Calculate vacation balance
@@ -952,14 +952,14 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, absences, departments = [],
               </h3>
             </div>
 
-            {absences.filter(a => a.userId === user.id).length === 0 ? (
+            {absences.filter(a => Number(a.userId) === Number(user.id)).length === 0 ? (
               <div className="p-8 text-center text-gray-500 bg-gray-50/30">
                 <Calendar className="mx-auto mb-3 text-gray-300" size={32} />
                 <p>Nenhum pedido de ausência registado.</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
-                {absences.filter(a => a.userId === user.id)
+                {absences.filter(a => Number(a.userId) === Number(user.id))
                   .sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime())
                   .map(absence => {
                     const statusConfig = {
@@ -1118,11 +1118,11 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, absences, departments = [],
                 Anomalias de Assiduidade
               </h3>
               <span className="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full font-medium">
-                {anomalies.filter(a => a.userId === user.id).length} Registos
+                {anomalies.filter(a => Number(a.userId) === Number(user.id)).length} Registos
               </span>
             </div>
 
-            {anomalies.filter(a => a.userId === user.id).length === 0 ? (
+            {anomalies.filter(a => Number(a.userId) === Number(user.id)).length === 0 ? (
               <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-200">
                 <CheckCircle2 className="mx-auto mb-2 text-green-400" size={32} />
                 <p className="font-bold text-gray-700">Sem anomalias registadas</p>
@@ -1131,7 +1131,7 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, absences, departments = [],
             ) : (
               <div className="space-y-4">
                 {anomalies
-                  .filter(a => a.userId === user.id)
+                  .filter(a => Number(a.userId) === Number(user.id))
                   .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                   .map(anomaly => {
                     const statusConfig = {

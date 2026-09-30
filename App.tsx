@@ -35,9 +35,8 @@ const TeamStatus = lazy(() => import('./pages/TeamStatus'));
 // CRITICAL: Login must NOT be lazy loaded - it's the entry point
 import Login from './pages/Login';
 const Rewards = lazy(() => import('./pages/Rewards'));
-// CRITICAL: Dashboard components must NOT be lazy loaded - they're immediate destinations after login
-import Dashboard from './pages/Dashboard';
-import KioskDashboard from './pages/KioskDashboard';
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const KioskDashboard = lazy(() => import('./pages/KioskDashboard'));
 const EmployeeTimeBank = lazy(() => import('./pages/EmployeeTimeBank'));
 const EmployeeAttendance = lazy(() => import('./pages/EmployeeAttendance'));
 const EmployeeVacations = lazy(() => import('./pages/EmployeeVacations'));
@@ -349,20 +348,27 @@ function App() {
     return 'PENDING';
   };
 
-  // Initial Data Load — Phase 1: Users (fast, unblocks Login), Phase 2: Everything else (background)
+  // Initial Data Load — Phase 1: Users, Phase 2: Everything else (background)
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('[App] Starting data fetch...');
-        // Start loading to indicate user fetching is active
+        // PERFORMANCE & SCALABILITY FIX:
+        // When user is not logged in (e.g. at /login), DO NOT query users or private data.
+        // The Login page operates independently with direct single-user PIN verification.
+        if (!authUser) {
+          setLoading(false);
+          setDataReady(true);
+          return;
+        }
+
+        console.log('[App] Starting data fetch for authenticated user:', authUser.name);
         setLoading(true);
         setDataReady(false);
 
-        // OPTIMIZATION: Load only recent data for faster initial load
-        // AttendanceControl defaults to showing today's logs, so load last 7 days initially
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const dateFilter = sevenDaysAgo.toISOString().split('T')[0];
+        // Ensure all time logs of the current month and recent months are loaded (90 days)
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+        const dateFilter = ninetyDaysAgo.toISOString().split('T')[0];
 
         // === PHASE 1: Load Users from Supabase ===
         // OPTIMIZATION: Select only essential fields for faster initial load
@@ -443,17 +449,49 @@ function App() {
         // Users loaded — Login page can now proceed
         setLoading(false);
 
-        // SAFETY GUARD: If no user is authenticated, skip Phase 2 private data fetching
-        if (!currentUser) {
-          console.log('[App] Initial load complete. Waiting for authentication...');
-          setDataReady(true);
-          return;
-        }
+        // Resolve active authenticated user immediately without waiting for React re-render
+        const authUserId = Number(authUser.id);
+        const resolvedUser: User = mappedUsers.find(u => Number(u.id) === authUserId) || currentUser || {
+          id: authUserId,
+          name: authUser.name,
+          email: authUser.email || '',
+          role: authUser.role,
+          company: Company.SEMRUMO,
+          status: UserStatus.ACTIVE,
+          created_at: new Date().toISOString(),
+          photoUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.name || 'user')}&background=random`,
+          attendanceConfig: DEFAULT_ATTENDANCE_CONFIG,
+          workStartTime: '09:00',
+          workEndTime: '18:00',
+          iban: '',
+          nif: '',
+          cc: '',
+          address: '',
+          birthDate: '',
+          admissionDate: new Date().toISOString().split('T')[0],
+          phone: '',
+          lunchStartTime: '13:00',
+          lunchEndTime: '14:00',
+          vacationDaysYearly: 0,
+          vacationDaysCarryover: 0,
+          vacationAdjustments: 0,
+          onboardingTasks: DEFAULT_ONBOARDING_TASKS,
+          documents: [],
+          department: '',
+          niss: '',
+          nationality: '',
+          mobilePhone: '',
+          whatsappEnabled: false,
+          locationIds: []
+        };
+
+        // Immediately update React state so the UI and router have the user
+        setCurrentUser(resolvedUser);
 
         // Check if user should see all records (not just their own)
-        const roleStr = (currentUser.role || '').toUpperCase();
+        const roleStr = (resolvedUser.role || '').toUpperCase();
         const canViewAllRecords = roleStr === 'ADMIN' || roleStr === 'AUDITOR' || roleStr === 'RH' || roleStr === 'RESPONSÁVEL DE DEPARTAMENTO';
-        console.log(`[App] 🔐 User role: ${currentUser.role} | Can view all records: ${canViewAllRecords}`);
+        console.log(`[App] 🔐 User: ${resolvedUser.name} (${resolvedUser.id}) | Role: ${resolvedUser.role} | Can view all records: ${canViewAllRecords}`);
 
         // === DEMO MODE EARLY RETURN ===
         if (isDemoMode()) {
@@ -488,29 +526,29 @@ function App() {
 
         let logsQuery = supabase.from('time_logs').select('*').gte('date', dateFilter).order('date', { ascending: false }).order('check_in', { ascending: false });
         if (!canViewAllRecords) {
-          console.log(`[App] ⚠️ Regular user - filtering by user_id: ${currentUser.id}`);
-          logsQuery = logsQuery.eq('user_id', currentUser.id);
+          console.log(`[App] ⚠️ Regular user - filtering by user_id: ${resolvedUser.id}`);
+          logsQuery = logsQuery.eq('user_id', resolvedUser.id);
         } else {
           console.log(`[App] ✅ Management user - loading ALL users' logs`);
         }
 
         let leavesQuery = supabase.from('leaves').select('*').order('start_date', { ascending: false });
-        if (!canViewAllRecords) leavesQuery = leavesQuery.eq('user_id', currentUser.id);
+        if (!canViewAllRecords) leavesQuery = leavesQuery.eq('user_id', resolvedUser.id);
 
         let anomaliesQuery = supabase.from('anomalies').select('*').gte('created_at', dateFilter).order('created_at', { ascending: false });
-        if (!canViewAllRecords) anomaliesQuery = anomaliesQuery.eq('user_id', currentUser.id).limit(100);
+        if (!canViewAllRecords) anomaliesQuery = anomaliesQuery.eq('user_id', resolvedUser.id).limit(100);
         else anomaliesQuery = anomaliesQuery.limit(500);
 
         let hbAdjQuery = supabase.from('hour_bank_adjustments').select('*').order('created_at', { ascending: false });
-        if (!canViewAllRecords) hbAdjQuery = hbAdjQuery.eq('user_id', currentUser.id);
+        if (!canViewAllRecords) hbAdjQuery = hbAdjQuery.eq('user_id', resolvedUser.id);
         else hbAdjQuery = hbAdjQuery.limit(500);
 
         let expensesQuery = supabase.from('expenses').select('*').order('date', { ascending: false });
-        if (!canViewAllRecords) expensesQuery = expensesQuery.eq('user_id', currentUser.id).limit(200);
+        if (!canViewAllRecords) expensesQuery = expensesQuery.eq('user_id', resolvedUser.id).limit(200);
         else expensesQuery = expensesQuery.limit(500);
 
         let messagesQuery = supabase.from('internal_messages').select('*').order('date', { ascending: false });
-        if (!canViewAllRecords) messagesQuery = messagesQuery.or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`).limit(100);
+        if (!canViewAllRecords) messagesQuery = messagesQuery.or(`sender_id.eq.${resolvedUser.id},receiver_id.eq.${resolvedUser.id}`).limit(100);
         else messagesQuery = messagesQuery.limit(500);
 
         // OPTIMIZATION: Split requests into smaller batches and add safety Limits (.limit(500))
@@ -574,14 +612,14 @@ function App() {
 
         // Map TimeLogs
         if (logsRes.data) {
-          console.log(`[App] ✅ Loaded ${logsRes.data.length} time logs from last 7 days`);
+          console.log(`[App] ✅ Loaded ${logsRes.data.length} time logs (90-day window)`);
           const today = new Date().toISOString().split('T')[0];
           const todayLogs = logsRes.data.filter((l: any) => l.date === today);
           console.log(`[App] 📊 Today's logs: ${todayLogs.length}/${logsRes.data.length}`);
 
           setTimeLogs(logsRes.data.map((l: any) => ({
             id: l.id,
-            userId: l.user_id,
+            userId: Number(l.user_id) || l.user_id,
             date: l.date,
             checkIn: l.check_in,
             checkOut: l.check_out,
@@ -860,7 +898,7 @@ function App() {
       }
     };
     fetchData();
-  }, [authSessionKey, currentUser?.id]);
+  }, [authSessionKey, authUser?.id]);
 
   // POLLING: Refresh critical tables every 60s to keep data fresh across sessions
   useEffect(() => {
@@ -936,10 +974,10 @@ function App() {
             }
         }
 
-        // 2. Refresh Logs (OPTIMIZED: Only load last 7 days like initial load)
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const recentDateFilter = sevenDaysAgo.toISOString().split('T')[0];
+        // 2. Refresh Logs (90 days covering full current and past month)
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+        const recentDateFilter = ninetyDaysAgo.toISOString().split('T')[0];
         let logsQuery = supabase.from('time_logs').select('*')
           .gte('date', recentDateFilter)
           .order('date', { ascending: false })
@@ -954,7 +992,7 @@ function App() {
         if (logsData) {
           const mappedLogs: TimeLog[] = logsData.map((l: any) => ({
             id: l.id,
-            userId: l.user_id,
+            userId: Number(l.user_id) || l.user_id,
             date: l.date,
             checkIn: l.check_in,
             checkOut: l.check_out,
@@ -1020,10 +1058,7 @@ function App() {
         }
 
         // 4. Refresh Anomalies
-        const ninetyDaysAgo = new Date();
-        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-        const dateFilter = ninetyDaysAgo.toISOString().split('T')[0];
-        let anomaliesQuery = supabase.from('anomalies').select('*').gte('created_at', dateFilter).order('created_at', { ascending: false });
+        let anomaliesQuery = supabase.from('anomalies').select('*').gte('created_at', recentDateFilter).order('created_at', { ascending: false });
         if (!canViewAllRecords) anomaliesQuery = anomaliesQuery.eq('user_id', currentUser.id).limit(100);
         
         const { data: anomaliesData } = await anomaliesQuery;
@@ -1243,6 +1278,81 @@ function App() {
       clearTimeout(timeout);
     };
   }, [users, timeLogs, leaves, scheduleTemplates, whatsappAutoAlerts]);
+
+  // SMART AUTO-CHECKOUT (Checkout Automático Inteligente)
+  useEffect(() => {
+    // Only run if user is admin (so it doesn't duplicate across all employee devices)
+    if (!currentUser || currentUser.role !== UserRole.ADMIN) return;
+
+    let isRunning = false;
+    const autoCheckoutCheck = async () => {
+      if (isRunning) return;
+      isRunning = true;
+      try {
+        const now = new Date();
+        const activeLogs = timeLogs.filter(l => !l.checkOut);
+        
+        let hasChanges = false;
+        
+        for (const log of activeLogs) {
+          // Parse checkIn and date to a Date object
+          const checkInStr = `${log.date}T${log.checkIn}`;
+          const checkInDate = new Date(checkInStr);
+          if (isNaN(checkInDate.getTime())) continue;
+
+          const diffHours = (now.getTime() - checkInDate.getTime()) / (1000 * 60 * 60);
+
+          // If log is older than 14 hours, auto-checkout
+          if (diffHours >= 14) {
+            console.log(`[AutoCheckout] Log ${log.id} from user ${log.userId} is older than 14 hours. Auto-closing.`);
+            
+            // Auto checkout exactly 9 hours after check-in
+            const autoOutDate = new Date(checkInDate.getTime() + 9 * 60 * 60 * 1000);
+            const autoOutTime = autoOutDate.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', hour12: false });
+            
+            const { error: updateError } = await supabase.from('time_logs').update({
+              check_out: autoOutTime,
+              check_out_location: 'Sistema (Auto-Checkout)',
+              status: 'COMPLETED'
+            }).eq('id', log.id);
+
+            if (updateError) continue;
+
+            // Create an anomaly
+            await supabase.from('anomalies').insert({
+              user_id: log.userId,
+              date: log.date,
+              type: 'ESQUECIMENTO_SAIDA',
+              description: 'Saída registada automaticamente após 14h sem atividade.',
+              time_log_id: log.id,
+              detected_by: 'SISTEMA_INTELIGENTE',
+              severity: 'MEDIUM',
+              status: 'PENDING'
+            });
+            
+            hasChanges = true;
+          }
+        }
+        
+        // Let the normal Realtime or Polling catch up the changes instead of complicated optimistic updates
+        // but we can trigger a small state refresh if needed, though real-time should handle it.
+      } catch (err) {
+        console.error('[AutoCheckout] Error:', err);
+      } finally {
+        isRunning = false;
+      }
+    };
+
+    // Run every 15 minutes
+    const interval = setInterval(autoCheckoutCheck, 15 * 60 * 1000);
+    // Initial run
+    const timeout = setTimeout(autoCheckoutCheck, 10000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [timeLogs, currentUser]);
 
   // Reset alerts sent at midnight
   useEffect(() => {
@@ -3653,7 +3763,43 @@ const AppRoutes = ({ users, loading, dataReady, absences, timeLogs, expenses, me
       found = users.find((u: User) => u.email?.toLowerCase() === user.email?.toLowerCase());
     }
 
-    return found || null;
+    if (!found) {
+      return {
+        id: Number(user.id) || 0,
+        name: user.name || 'Colaborador',
+        email: user.email || '',
+        role: user.role,
+        company: Company.SEMRUMO,
+        status: UserStatus.ACTIVE,
+        created_at: new Date().toISOString(),
+        photoUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'user')}&background=random`,
+        attendanceConfig: DEFAULT_ATTENDANCE_CONFIG,
+        workStartTime: '09:00',
+        workEndTime: '18:00',
+        iban: '',
+        nif: '',
+        cc: '',
+        address: '',
+        birthDate: '',
+        admissionDate: new Date().toISOString().split('T')[0],
+        phone: '',
+        lunchStartTime: '13:00',
+        lunchEndTime: '14:00',
+        vacationDaysYearly: 0,
+        vacationDaysCarryover: 0,
+        vacationAdjustments: 0,
+        onboardingTasks: DEFAULT_ONBOARDING_TASKS,
+        documents: [],
+        department: '',
+        niss: '',
+        nationality: '',
+        mobilePhone: '',
+        whatsappEnabled: false,
+        locationIds: []
+      } as User;
+    }
+
+    return found;
   }, [user, users]);
 
   // Analytics context for LEO AI assistant (admin only)

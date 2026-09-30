@@ -49,7 +49,7 @@ const EmployeeTimeline: React.FC<EmployeeTimelineProps> = ({
 
         // Time logs
         timeLogs
-            .filter(l => l.userId === userId)
+            .filter(l => Number(l.userId) === Number(userId))
             .forEach(log => {
                 const isLate = log.status === 'LATE';
                 const isIncomplete = log.status === 'INCOMPLETE';
@@ -67,7 +67,7 @@ const EmployeeTimeline: React.FC<EmployeeTimelineProps> = ({
 
         // Leaves
         leaves
-            .filter(l => l.userId === userId)
+            .filter(l => Number(l.userId) === Number(userId))
             .forEach(leave => {
                 const lt = leaveTypes.find(t => t.id === leave.leaveTypeId);
                 const isApproved = leave.status === 'APPROVED';
@@ -86,7 +86,7 @@ const EmployeeTimeline: React.FC<EmployeeTimelineProps> = ({
 
         // Anomalies
         anomalies
-            .filter(a => a.userId === userId)
+            .filter(a => Number(a.userId) === Number(userId))
             .forEach(anomaly => {
                 const typeLabels: Record<string, string> = {
                     LATE_ENTRY: 'Atraso',

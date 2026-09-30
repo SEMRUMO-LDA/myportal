@@ -191,8 +191,8 @@ const AttendanceControl: React.FC<AttendanceControlProps> = ({
 
   // OPTIMIZATION: Memoize Users Map and Anomalies Map for faster lookups
   const usersMap = useMemo(() => {
-    const map = new Map<number | string, User>();
-    users.forEach(u => map.set(u.id, u));
+    const map = new Map<string, User>();
+    users.forEach(u => map.set(String(u.id), u));
     return map;
   }, [users]);
 
@@ -206,7 +206,7 @@ const AttendanceControl: React.FC<AttendanceControlProps> = ({
   // Replaced O(L * U) with O(L) using Map lookup
   const richLogs = useMemo(() => {
     return logs.map(log => {
-      const user = usersMap.get(log.userId);
+      const user = usersMap.get(String(log.userId));
       const logAnomaly = anomaliesMap.get(log.id);
       return { ...log, user, anomaly: logAnomaly };
     }).filter(item => item.user !== undefined);
@@ -276,11 +276,12 @@ const AttendanceControl: React.FC<AttendanceControlProps> = ({
 
   // OPTIMIZATION: Pre-group logs by user to avoid O(U * L) filtering inside timeBankData
   const userLogsMap = useMemo(() => {
-    const map = new Map<number | string, TimeLog[]>();
+    const map = new Map<string, TimeLog[]>();
     richLogs.forEach(log => {
       if (log.totalHours) {
-        if (!map.has(log.userId)) map.set(log.userId, []);
-        map.get(log.userId)!.push(log);
+        const uid = String(log.userId);
+        if (!map.has(uid)) map.set(uid, []);
+        map.get(uid)!.push(log);
       }
     });
     return map;
@@ -297,7 +298,7 @@ const AttendanceControl: React.FC<AttendanceControlProps> = ({
 
       if (term && !user.name.toLowerCase().includes(term)) return null;
 
-      const userLogs = userLogsMap.get(user.id) || [];
+      const userLogs = userLogsMap.get(String(user.id)) || [];
 
       let expectedMinutesPerDay = 8 * 60;
       if (user.workStartTime && user.workEndTime) {
@@ -324,7 +325,7 @@ const AttendanceControl: React.FC<AttendanceControlProps> = ({
       });
 
       // Include manual adjustments
-      const userAdj = hourBankAdjustments.filter(a => a.userId === user.id);
+      const userAdj = hourBankAdjustments.filter(a => Number(a.userId) === Number(user.id));
       const adjMinutes = userAdj.reduce((sum, a) => sum + a.adjustmentMinutes, 0);
       totalBalanceMinutes += adjMinutes;
 
@@ -1285,7 +1286,7 @@ Por favor, contacte o seu responsável para mais informações.`,
             <div className="p-6">
               <div className="grid grid-cols-1 gap-4">
                 {timeBankData.map((data: any) => {
-                  const userAdjustments = hourBankAdjustments.filter(a => a.userId === data.user.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                  const userAdjustments = hourBankAdjustments.filter(a => Number(a.userId) === Number(data.user.id)).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                   const isExpanded = expandedUserId === data.user.id;
                   return (
                     <div key={data.user.id} className="border border-gray-100 rounded-xl hover:shadow-md transition-shadow bg-white overflow-hidden">

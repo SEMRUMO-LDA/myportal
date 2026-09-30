@@ -10,9 +10,9 @@ import { isKioskAuthorized } from '../services/sessionService';
 import { kioskClockService } from '../services/kioskClockService';
 import PasswordRecoveryModal from '../components/PasswordRecoveryModal';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
-import { QuickLoader } from '../components/QuickLoader';
 import { versionService } from '../services/versionService';
 import { isDemoMode, getDemoUserById, validateDemoLogin, saveDemoSession, demoUserToSession } from '../services/demoMode';
+import { geolocationService } from '../services/geolocationService';
 
 interface LoginProps {
   // onUpdateUser removido conforme solicitado
@@ -30,46 +30,32 @@ const Login: React.FC<LoginProps> = () => {
   // Kiosk Mode Detection
   const isKioskMode = location.search.includes('kiosk=true');
 
-  // Login Type Toggle
-  const [loginType, setLoginType] = useState<'colaborador' | 'administrador'>('colaborador');
-  const [initialCheckComplete, setInitialCheckComplete] = useState(false);
-
-  // Quick session check for faster redirect
-  useEffect(() => {
-    const quickSessionCheck = async () => {
-      // Quick check localStorage first (synchronous)
-      const cachedToken = localStorage.getItem('supabase.auth.token');
-
-      if (cachedToken && !isKioskMode) {
-        // Show quick loader while validating
-        setInitialCheckComplete(false);
-
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            // Quick redirect based on cached role if available
-            const cachedRole = localStorage.getItem('user_role');
-            if (cachedRole) {
-              const isAdminRole = ['ADMIN', 'Administrador', 'RH', 'Diretor de Unidade', 'Responsável de Departamento'].includes(cachedRole);
-              navigate(isAdminRole && loginType === 'administrador' ? '/admin' : '/portal', { replace: true });
-              return;
-            }
-          }
-        } catch (error) {
-          console.error('Quick session check failed:', error);
-        }
+  // Client-side cache for instant employee lookup (0ms response)
+  const getCachedEmployee = (id: number) => {
+    try {
+      const key = `myportal_emp_${id}`;
+      const raw = sessionStorage.getItem(key) || localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (Date.now() - parsed.cachedAt < 2 * 60 * 60 * 1000) {
+        return parsed;
       }
+    } catch {}
+    return null;
+  };
 
-      setInitialCheckComplete(true);
-    };
+  const setCachedEmployee = (emp: { id: number; email: string; role: string; requires_new_pin: boolean }) => {
+    try {
+      const key = `myportal_emp_${emp.id}`;
+      const data = { ...emp, cachedAt: Date.now() };
+      sessionStorage.setItem(key, JSON.stringify(data));
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch {}
+  };
 
-    quickSessionCheck();
-  }, []);
-
+  // Redirect if already authenticated (background check without blocking keypad UI)
   useEffect(() => {
-    if (!authLoading && user && initialCheckComplete) {
-      if (isKioskMode) return;
-
+    if (!authLoading && user && !isKioskMode) {
       if (loginType === 'administrador') {
         const isAdminUser = user.role === UserRole.ADMIN ||
                            user.role === 'Administrador' ||
@@ -88,7 +74,7 @@ const Login: React.FC<LoginProps> = () => {
         navigate('/portal', { replace: true });
       }
     }
-  }, [user, authLoading, navigate, isKioskMode, loginType, initialCheckComplete]);
+  }, [user, authLoading, navigate, isKioskMode, loginType]);
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -238,14 +224,34 @@ const Login: React.FC<LoginProps> = () => {
           setUserEmail(demoUser.email);
           setRequiresNewPin(demoUser.requiresNewPin);
           setCurrentUserId(demoUser.id);
+          if (isKioskMode) geolocationService.warmUp();
           setStep('pin');
           setPin('');
           return;
         }
 
-        // === PRODUCTION: Direct query with timeout (replaces fragile RPC) ===
+        // === CACHE LEVEL 1: Check instant client cache (0ms) ===
+        const cachedEmp = getCachedEmployee(userId);
+        if (cachedEmp) {
+          if (loginType === 'administrador') {
+            const isAdmin = ['ADMIN', 'Administrador', 'RH', 'Diretor de Unidade', 'Responsável de Departamento'].includes(cachedEmp.role);
+            if (!isAdmin) {
+              setEmployeeError('Acesso restrito a administradores.');
+              return;
+            }
+          }
+          setUserEmail(cachedEmp.email);
+          setRequiresNewPin(cachedEmp.requires_new_pin);
+          setCurrentUserId(userId);
+          if (isKioskMode) geolocationService.warmUp();
+          setStep('pin');
+          setPin('');
+          return;
+        }
+
+        // === PRODUCTION: Direct query with timeout ===
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
+        const timeout = setTimeout(() => controller.abort(), 5000);
 
         const { data, error } = await supabase
           .from('users')
@@ -271,9 +277,11 @@ const Login: React.FC<LoginProps> = () => {
         }
 
         const email = data.email || `user${userId}@myportal.internal`;
+        setCachedEmployee({ id: userId, email, role: data.role, requires_new_pin: !!data.requires_new_pin });
         setUserEmail(email);
         setRequiresNewPin(data.requires_new_pin);
         setCurrentUserId(userId);
+        if (isKioskMode) geolocationService.warmUp();
         setStep('pin');
         setPin('');
       } catch (err: any) {
@@ -421,15 +429,21 @@ const Login: React.FC<LoginProps> = () => {
     return '';
   };
 
-  // Show quick loader during initial session check
-  if (!initialCheckComplete && !isKioskMode) {
-    return <QuickLoader />;
-  }
-
-  // Show quick loader while auth is loading and we have a user
-  if (authLoading && !isKioskMode) {
-    return <QuickLoader />;
-  }
+  // Physical keyboard and barcode scanner support
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (showPasswordRecovery || showPrivacyPolicy) return;
+      if (e.key >= '0' && e.key <= '9') {
+        handleNumpadClick(e.key);
+      } else if (e.key === 'Backspace') {
+        handleBackspace();
+      } else if (e.key === 'Enter') {
+        handleEmployeeSubmit();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showPasswordRecovery, showPrivacyPolicy, handleEmployeeSubmit, handleBackspace, handleNumpadClick]);
 
   return (
     <div className="min-h-screen w-full bg-[#020a16] bg-gradient-to-br from-[#041d3d] to-[#020a16] flex flex-col items-center justify-center p-4 sm:p-6 overflow-y-auto overflow-x-hidden selection:bg-blue-500/30">
@@ -464,7 +478,7 @@ const Login: React.FC<LoginProps> = () => {
         <div className="flex items-center gap-4 sm:gap-8">
           <div className={`hidden sm:flex items-center gap-2.5 text-[10px] font-black px-4 py-2 rounded-full border ${isOnline ? 'text-[#14b8a6] bg-[#042f2e] border-[#14b8a6]/20' : 'text-orange-400 bg-orange-400/10 border-orange-400/20'} shadow-inner`}>
             <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-[#14b8a6] shadow-[0_0_8px_#14b8a6]' : 'bg-orange-400'}`}></span>
-            ONLINE <span className="text-white/30 ml-1">v{versionService.getBuildSequence()}</span>
+            ONLINE <span className="text-white/30 ml-1">V1.25</span>
           </div>
           <div className="text-white/90 text-4xl sm:text-6xl font-extralight tracking-tight tabular-nums">
             {currentTime.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}

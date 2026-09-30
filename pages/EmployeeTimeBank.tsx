@@ -22,7 +22,7 @@ const EmployeeTimeBank: React.FC<EmployeeTimeBankProps> = ({ user, logs, adjustm
 
     const processedData = useMemo(() => {
         // Filter logs for this user only
-        const userLogs = logs.filter(l => l.userId === user.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const userLogs = logs.filter(l => Number(l.userId) === Number(user.id)).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
         // Calculate Expected Hours based on user schedule
         let expectedMinutesPerDay = 8 * 60;
@@ -73,7 +73,7 @@ const EmployeeTimeBank: React.FC<EmployeeTimeBankProps> = ({ user, logs, adjustm
         });
 
         // Include manual adjustments
-        const userAdjustments = adjustments.filter(a => a.userId === user.id);
+        const userAdjustments = adjustments.filter(a => Number(a.userId) === Number(user.id));
         const adjTotal = userAdjustments.reduce((sum, a) => sum + a.adjustmentMinutes, 0);
 
         return {

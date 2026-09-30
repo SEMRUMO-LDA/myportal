@@ -25,22 +25,21 @@ const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ user, logs, lea
     const userLogs = useMemo(() => {
         if (!user) return [];
         return logs.filter(log => {
-            if (log.userId !== user.id) return false;
-            const logDate = new Date(log.date);
-            return logDate.getMonth() === selectedMonth && logDate.getFullYear() === selectedYear;
+            if (Number(log.userId) !== Number(user.id)) return false;
+            const [y, m] = (log.date || '').split('-').map(Number);
+            return y === selectedYear && (m - 1) === selectedMonth;
         }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [logs, user, selectedMonth, selectedYear]);
 
     // Filter leaves for current user and selected month
     const userLeaves = useMemo(() => {
         if (!user) return [];
+        const monthStart = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+        const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+        const monthEnd = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
         return leaves.filter(leave => {
-            if (leave.userId !== user.id || leave.status !== 'APPROVED') return false;
-            const start = new Date(leave.startDate);
-            const end = new Date(leave.endDate);
-            const viewStart = new Date(selectedYear, selectedMonth, 1);
-            const viewEnd = new Date(selectedYear, selectedMonth + 1, 0);
-            return start <= viewEnd && end >= viewStart;
+            if (Number(leave.userId) !== Number(user.id) || leave.status !== 'APPROVED') return false;
+            return leave.startDate <= monthEnd && leave.endDate >= monthStart;
         });
     }, [leaves, user, selectedMonth, selectedYear]);
 
@@ -75,8 +74,8 @@ const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ user, logs, lea
 
         // Add days of the month
         for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(selectedYear, selectedMonth, day);
-            const dateStr = date.toISOString().split('T')[0];
+            const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const date = new Date(selectedYear, selectedMonth, day, 12, 0, 0);
             const log = userLogs.find(l => l.date === dateStr);
             const leave = userLeaves.find(l => dateStr >= l.startDate && dateStr <= l.endDate);
 
@@ -167,7 +166,7 @@ const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ user, logs, lea
         if (!user) return;
 
         // Use all approved leaves for export, not just current month
-        const approvedLeaves = leaves.filter(l => l.userId === user.id && l.status === 'APPROVED');
+        const approvedLeaves = leaves.filter(l => Number(l.userId) === Number(user.id) && l.status === 'APPROVED');
 
         const icsEvents = approvedLeaves.map(l => {
             const start = parseISO(l.startDate);
@@ -387,7 +386,7 @@ const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ user, logs, lea
                                         </div>
                                         <div>
                                             <p className="font-bold text-gray-900">
-                                                {new Date(log.date).toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                                {new Date((log.date || '') + 'T12:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}
                                             </p>
                                             <p className="text-xs text-gray-500 mt-0.5">
                                                 {log.checkInLocation || 'Localização não registada'}

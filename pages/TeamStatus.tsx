@@ -19,7 +19,7 @@ const TeamStatus: React.FC<TeamStatusProps> = ({ users, logs }) => {
     const userStatuses = useMemo(() => {
         return users.map(user => {
             // Find today's log for this user
-            const userLog = logs.find(log => log.userId === user.id && log.date === today);
+            const userLog = logs.find(log => Number(log.userId) === Number(user.id) && log.date === today);
 
             // Determine status: Green if checked in AND NOT checked out
             const isOnline = userLog && userLog.checkIn && !userLog.checkOut;

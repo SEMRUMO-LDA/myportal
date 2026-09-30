@@ -99,6 +99,20 @@ class GeolocationService {
   }
 
   /**
+   * Warm up the GPS sensor in the background to make the actual punch much faster
+   */
+  warmUp() {
+    if (navigator.geolocation) {
+      console.log('[Geolocation] Warming up GPS sensor...');
+      navigator.geolocation.getCurrentPosition(
+        () => console.log('[Geolocation] ✅ Sensor warmed up'),
+        () => console.log('[Geolocation] ⚠️ Sensor warm up failed (will retry on actual punch)'),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+  }
+
+  /**
    * Calculate distance between two points using Haversine formula
    * Returns distance in meters
    */

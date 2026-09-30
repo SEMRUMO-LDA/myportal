@@ -43,7 +43,7 @@ const MyExpenses: React.FC<MyExpensesProps> = ({ user, expenses, onAddExpense })
         receiptUrl: ''
     });
 
-    const myExpenses = expenses.filter(e => e.userId === user.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const myExpenses = expenses.filter(e => Number(e.userId) === Number(user.id)).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     // Stats
     const pendingAmount = myExpenses.filter(e => e.status === ExpenseStatus.PENDING).reduce((sum, e) => sum + e.amount, 0);

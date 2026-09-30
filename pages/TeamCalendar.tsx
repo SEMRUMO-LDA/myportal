@@ -204,7 +204,7 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ users, leaves, leaveTypes, 
     const getVacationDaysUsed = (userId: number): number => {
         const currentYear = new Date().getFullYear();
         return leaves
-            .filter(l => l.userId === userId && l.status === AbsenceStatus.APPROVED)
+            .filter(l => Number(l.userId) === Number(userId) && l.status === AbsenceStatus.APPROVED)
             .filter(l => {
                 const lt = leaveTypes.find(t => t.id === l.leaveTypeId);
                 return lt?.deductsVacation;

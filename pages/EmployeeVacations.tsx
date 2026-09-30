@@ -25,7 +25,7 @@ const EmployeeVacations: React.FC<EmployeeVacationsProps> = ({
     // Filter user's leaves
     const myLeaves = useMemo(() => {
         return leaves
-            .filter(l => l.userId === user.id)
+            .filter(l => Number(l.userId) === Number(user.id))
             .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
     }, [leaves, user.id]);
 
