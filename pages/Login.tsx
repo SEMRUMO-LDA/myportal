@@ -394,6 +394,7 @@ const Login: React.FC<LoginProps> = () => {
         }
       } finally {
         setIsLoggingIn(false);
+        isSubmittingRef.current = false;
       }
     } else if (step === 'pin') {
       if (pin.length < 6) return;
