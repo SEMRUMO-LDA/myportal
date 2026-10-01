@@ -176,6 +176,7 @@ const Login: React.FC<LoginProps> = () => {
         setStep('id');
         setAccessCode('');
         setPin('');
+        setIsLoggingIn(false); // CRITICAL: Release the loader lock for the next user!
         isSubmittingRef.current = false; // FREE THE LOCK!
       }, 4000);
       return () => clearTimeout(timeout);
@@ -251,10 +252,16 @@ const Login: React.FC<LoginProps> = () => {
         }, 3000);
       } else {
         setEmployeeError(`Erro ao registar: ${result.message}`);
+        setIsLoggingIn(false);
+        isSubmittingRef.current = false;
+        setPin('');
       }
     } catch (err) {
       console.error('[Kiosk] Error:', err);
       setEmployeeError('Erro ao registar ponto.');
+      setIsLoggingIn(false);
+      isSubmittingRef.current = false;
+      setPin('');
     }
   };
 
