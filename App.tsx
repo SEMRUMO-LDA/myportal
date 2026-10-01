@@ -638,15 +638,24 @@ function App() {
 
         // Map Schedule Templates
         if (templatesRes.data) {
-          setScheduleTemplates(templatesRes.data.map((t: any) => ({
-            id: t.id,
-            name: t.name,
-            weeklyPattern: t.weekly_pattern || [],
-            cycleDays: t.cycle_days,
-            cyclePattern: t.cycle_pattern,
-            totalWeeklyHours: t.total_weekly_hours,
-            createdAt: t.created_at
-          })));
+          setScheduleTemplates(templatesRes.data.map((t: any) => {
+            const mappedWeeklyPattern = (t.weekly_pattern || []).map((wp: any) => {
+              // Legacy support: Supabase JSON has dayOfWeek, TS uses day
+              return {
+                ...wp,
+                day: wp.day !== undefined ? wp.day : wp.dayOfWeek
+              };
+            });
+            return {
+              id: t.id,
+              name: t.name,
+              weeklyPattern: mappedWeeklyPattern,
+              cycleDays: t.cycle_days,
+              cyclePattern: t.cycle_pattern,
+              totalWeeklyHours: t.total_weekly_hours,
+              createdAt: t.created_at
+            };
+          }));
         }
 
         // Map Expenses
