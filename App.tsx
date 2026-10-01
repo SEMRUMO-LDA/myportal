@@ -3930,6 +3930,7 @@ const AppRoutes = ({ users, loading, dataReady, absences, timeLogs, expenses, me
                 <ResilientKioskWrapper
                   currentUser={currentUser}
                   timeLogs={timeLogs}
+                  setTimeLogs={setTimeLogs}
                   users={users}
                   locations={locations}
                   lockedMonths={lockedMonths}
