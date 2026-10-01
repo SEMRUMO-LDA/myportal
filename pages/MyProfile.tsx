@@ -41,6 +41,7 @@ import {
   Send
 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
+import BadgesWidget from '../components/BadgesWidget';
 
 interface MyProfileProps {
   user: User;
@@ -455,6 +456,13 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, absences, departments = [],
           >
             <Clock size={18} /> Linha do Tempo
             {activeTab === 'timeline' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-600 rounded-t-full"></div>}
+          </button>
+          <button
+            onClick={() => handleTabChange('conquistas')}
+            className={`pb-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${activeTab === 'conquistas' ? 'text-brand-600 font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <Trophy size={18} /> Conquistas
+            {activeTab === 'conquistas' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-600 rounded-t-full"></div>}
           </button>
         </div>
       </div>
@@ -1212,6 +1220,25 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, absences, departments = [],
                   })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* CONTENT TAB: CONQUISTAS */}
+      {activeTab === 'conquistas' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-6">
+              <Trophy className="text-brand-500" size={20} />
+              Minhas Conquistas
+            </h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Ganha medalhas baseadas no teu bom histórico de assiduidade e performance.
+            </p>
+            <BadgesWidget 
+              timeLogs={timeLogs.filter(l => String(l.userId) === String(user.id))} 
+              anomalies={anomalies.filter(a => String(a.userId) === String(user.id))}
+            />
           </div>
         </div>
       )}
