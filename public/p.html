@@ -58,10 +58,66 @@ function sh(m,t='wait'){st.className=`info ${t}`;st.innerHTML=m}
 let mode = 'ENTRADA';
 async function gps(){sh('<span class="spin"></span> A obter GPS...','wait');if(!navigator.geolocation){sh('❌ GPS não disponível','err');return false}return new Promise(r=>{navigator.geolocation.getCurrentPosition(pos=>{loc={lat:pos.coords.latitude,lng:pos.coords.longitude,acc:pos.coords.accuracy};lc.style.display='block';ld.innerHTML=`Lat: ${loc.lat.toFixed(6)}<br>Lng: ${loc.lng.toFixed(6)}<br>Precisão: ${Math.round(loc.acc)}m`;sh('✅ GPS obtido! Pronto para picar.','ok');if(mode==='ENTRADA'){be.disabled=false}else{bs.disabled=false};r(true)},err=>{let m='❌ Erro ao obter GPS. ';if(err.code===1)m+='Por favor, autorize o acesso.';else if(err.code===2)m+='GPS indisponível.';else m+='Tempo esgotado.';sh(m,'err');r(false)},{enableHighAccuracy:true,timeout:10000,maximumAge:0})})}
 async function gu(){if(!ph){sh('❌ Telefone não identificado','err');return null}try{sh('<span class="spin"></span> A identificar...','wait');const cp=ph.trim().replace(/\s+/g,'');let u=`${U}/users?phone=ilike.*${cp}*&select=id,name,phone`;let res=await fetch(u,{headers:{apikey:K,Authorization:`Bearer ${K}`}});let d=await res.json();if(!d||d.length===0){const p2=cp.replace(/^\+?351/,'');u=`${U}/users?phone=ilike.*${p2}*&select=id,name,phone`;res=await fetch(u,{headers:{apikey:K,Authorization:`Bearer ${K}`}});d=await res.json()}if(!d||d.length===0){sh('❌ Utilizador não encontrado','err');console.error('Phone:',cp);return null}console.log('User:',d[0]);return d[0].id}catch(e){console.error('Error:',e);sh('❌ Erro ao identificar','err');return null}}
-async function reg(a){if(!loc){sh('❌ Aguarde GPS','err');return}if(!uid){sh('❌ Utilizador não identificado','err');return}be.disabled=true;bs.disabled=true;sh('<span class="spin"></span> A registar...','wait');try{const n=new Date().toISOString(),t=n.split('T')[0],l=`${loc.lat},${loc.lng}`;if(a==='ENTRADA'){await fetch(`${U}/time_logs`,{method:'POST',headers:{apikey:K,Authorization:`Bearer ${K}`,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({user_id:uid,date:t,clock_in:n,location_in:l,created_at:n,updated_at:n})});sh(`✅ ENTRADA registada!<br><small>${new Date().toLocaleTimeString('pt-PT')}</small>`,'ok')}else{const fr=await fetch(`${U}/time_logs?user_id=eq.${uid}&date=eq.${t}&clock_out=is.null&order=created_at.desc&limit=1`,{headers:{apikey:K,Authorization:`Bearer ${K}`}});const lg=await fr.json();if(!lg||lg.length===0){sh('❌ Sem entrada registada','err');if(mode==='ENTRADA'){be.disabled=false}else{bs.disabled=false};return}await fetch(`${U}/time_logs?id=eq.${lg[0].id}`,{method:'PATCH',headers:{apikey:K,Authorization:`Bearer ${K}`,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({clock_out:n,location_out:l,updated_at:n})});sh(`✅ SAÍDA registada!<br><small>${new Date().toLocaleTimeString('pt-PT')}</small>`,'ok')}setTimeout(()=>{window.location.reload()},4000)}catch(e){console.error('Error:',e);sh('❌ Erro ao registar. Tente novamente.','err');if(mode==='ENTRADA'){be.disabled=false}else{bs.disabled=false}}}
+async function reg(a){
+  if(!loc){sh('❌ Aguarde GPS','err');return}
+  if(!uid){sh('❌ Utilizador não identificado','err');return}
+  be.disabled=true;bs.disabled=true;
+  sh('<span class="spin"></span> A registar...','wait');
+  try {
+    const d=new Date();
+    const t=d.toISOString().split('T')[0];
+    const time=d.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit',hour12:false});
+    const addr=`Lat: ${loc.lat.toFixed(6)}, Lng: ${loc.lng.toFixed(6)}`;
+    
+    if(a==='ENTRADA'){
+      const res=await fetch(`${U}/time_logs`,{
+        method:'POST',
+        headers:{apikey:K,Authorization:`Bearer ${K}`,'Content-Type':'application/json'},
+        body:JSON.stringify({user_id:uid,date:t,check_in:time,check_in_location:addr,check_in_coordinates:{lat:loc.lat,lng:loc.lng},status:'ACTIVE'})
+      });
+      if(!res.ok) throw new Error('Falha no POST');
+      sh(`✅ ENTRADA registada!<br><small>${time}</small>`,'ok');
+    } else {
+      const fr=await fetch(`${U}/time_logs?user_id=eq.${uid}&date=eq.${t}&check_out=is.null&order=created_at.desc&limit=1`,{headers:{apikey:K,Authorization:`Bearer ${K}`}});
+      const lg=await fr.json();
+      if(!lg||lg.length===0){
+        sh('❌ Sem entrada registada','err');
+        if(mode==='ENTRADA') be.disabled=false; else bs.disabled=false;
+        return;
+      }
+      const res=await fetch(`${U}/time_logs?id=eq.${lg[0].id}`,{
+        method:'PATCH',
+        headers:{apikey:K,Authorization:`Bearer ${K}`,'Content-Type':'application/json'},
+        body:JSON.stringify({check_out:time,check_out_location:addr,check_out_coordinates:{lat:loc.lat,lng:loc.lng},status:'COMPLETED'})
+      });
+      if(!res.ok) throw new Error('Falha no PATCH');
+      sh(`✅ SAÍDA registada!<br><small>${time}</small>`,'ok');
+    }
+    setTimeout(()=>{window.location.reload()},4000);
+  } catch(e) {
+    console.error('Error:',e);
+    sh('❌ Erro ao registar. Tente novamente.','err');
+    if(mode==='ENTRADA') be.disabled=false; else bs.disabled=false;
+  }
+}
 be.onclick=()=>reg('ENTRADA');
 bs.onclick=()=>reg('SAIDA');
-async function init(){uid=await gu();if(uid){const t=new Date().toISOString().split('T')[0];const fr=await fetch(`${U}/time_logs?user_id=eq.${uid}&date=eq.${t}&clock_out=is.null&order=created_at.desc&limit=1`,{headers:{apikey:K,Authorization:`Bearer ${K}`}});const lg=await fr.json();if(lg&&lg.length>0){mode='SAIDA';be.style.display='none'}else{mode='ENTRADA';bs.style.display='none'};await gps()}}
+async function init(){
+  uid=await gu();
+  if(uid){
+    const t=new Date().toISOString().split('T')[0];
+    const fr=await fetch(`${U}/time_logs?user_id=eq.${uid}&date=eq.${t}&check_out=is.null&order=created_at.desc&limit=1`,{headers:{apikey:K,Authorization:`Bearer ${K}`}});
+    const lg=await fr.json();
+    if(lg&&lg.length>0){
+      mode='SAIDA';
+      be.style.display='none';
+    }else{
+      mode='ENTRADA';
+      bs.style.display='none';
+    }
+    await gps();
+  }
+}
 init();
 </script>
 </body>
