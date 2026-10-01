@@ -18,6 +18,46 @@ interface LoginProps {
   // onUpdateUser removido conforme solicitado
 }
 
+const LiveHeader = ({ isOnline }: { isOnline: boolean }) => {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+      <div className="flex items-center justify-between px-6 sm:px-10 py-4 sm:py-6 absolute top-0 left-0 right-0 z-20">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center shadow-xl backdrop-blur-md">
+            <Clock className="text-white/70" size={20} sm:size={24} />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide leading-tight">
+              {(() => {
+                const hour = currentTime.getHours();
+                if (hour >= 5 && hour < 12) return 'Bom dia! ☕️';
+                if (hour >= 12 && hour < 20) return 'Boa tarde! ☀️';
+                return 'Bom turno! 🌙';
+              })()}
+            </h1>
+            <p className="text-[#3b82f6] text-[10px] font-bold uppercase tracking-widest mt-0.5">SEMRUMO MY PORTAL</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 sm:gap-8">
+          <div className={`hidden sm:flex items-center gap-2.5 text-[10px] font-black px-4 py-2 rounded-full border ${isOnline ? 'text-[#14b8a6] bg-[#042f2e] border-[#14b8a6]/20' : 'text-orange-400 bg-orange-400/10 border-orange-400/20'} shadow-inner`}>
+            <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-[#14b8a6] shadow-[0_0_8px_#14b8a6]' : 'bg-orange-400'}`}></span>
+            ONLINE <span className="text-white/30 ml-1">V1.25</span>
+          </div>
+          <div className="text-white/90 text-4xl sm:text-6xl font-extralight tracking-tight tabular-nums">
+            {currentTime.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        </div>
+      </div>
+  );
+};
+
+
 const Login: React.FC<LoginProps> = () => {
   const { user, isLoading: authLoading, login: authLogin } = useAuth();
   const navigate = useNavigate();
@@ -55,6 +95,9 @@ const Login: React.FC<LoginProps> = () => {
 
 
 
+
+  const prefetchedKioskActionRef = useRef<'in' | 'out' | null>(null);
+
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginType, setLoginType] = useState<'colaborador' | 'administrador'>('colaborador');
 
@@ -90,7 +133,6 @@ const Login: React.FC<LoginProps> = () => {
   const [kioskAction, setKioskAction] = useState<'in' | 'out'>('in');
 
   // Status State
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Redirect if already authenticated (background check without blocking keypad UI)
@@ -128,11 +170,6 @@ const Login: React.FC<LoginProps> = () => {
   }, []);
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
     if (showKioskSuccess) {
       const timeout = setTimeout(() => {
         setShowKioskSuccess(false);
@@ -165,18 +202,37 @@ const Login: React.FC<LoginProps> = () => {
     else if (step === 'confirm-pin') setConfirmPin(prev => prev.slice(0, -1));
   };
 
-  const performKioskAction = async (userData: any) => {
+  const prefetchKioskAction = async (userId: number) => {
+    prefetchedKioskActionRef.current = null;
     try {
       const { data: lastLogs } = await supabase
         .from('time_logs')
-        .select('*')
-        .eq('user_id', userData.id)
+        .select('id')
+        .eq('user_id', userId)
         .is('check_out', null)
         .order('date', { ascending: false })
         .order('check_in', { ascending: false })
         .limit(1);
+      prefetchedKioskActionRef.current = lastLogs && lastLogs.length > 0 ? 'out' : 'in';
+    } catch(e) {}
+  };
 
-      const actionToPerform = lastLogs && lastLogs.length > 0 ? 'out' : 'in';
+  const performKioskAction = async (userData: any) => {
+    try {
+      let actionToPerform = prefetchedKioskActionRef.current;
+      
+      if (!actionToPerform) {
+        const { data: lastLogs } = await supabase
+          .from('time_logs')
+          .select('id')
+          .eq('user_id', userData.id)
+          .is('check_out', null)
+          .order('date', { ascending: false })
+          .order('check_in', { ascending: false })
+          .limit(1);
+
+        actionToPerform = lastLogs && lastLogs.length > 0 ? 'out' : 'in';
+      }
 
       let result;
       if (actionToPerform === 'in') {
@@ -236,7 +292,10 @@ const Login: React.FC<LoginProps> = () => {
           setUserEmail(demoUser.email);
           setRequiresNewPin(demoUser.requiresNewPin);
           setCurrentUserId(demoUser.id);
-          if (isKioskMode) geolocationService.warmUp();
+          if (isKioskMode) {
+             geolocationService.warmUp();
+             prefetchKioskAction(userId);
+          }
           setStep('pin');
           setPin('');
           return;
@@ -255,7 +314,10 @@ const Login: React.FC<LoginProps> = () => {
           setUserEmail(cachedEmp.email);
           setRequiresNewPin(cachedEmp.requires_new_pin);
           setCurrentUserId(userId);
-          if (isKioskMode) geolocationService.warmUp();
+          if (isKioskMode) {
+             geolocationService.warmUp();
+             prefetchKioskAction(userId);
+          }
           setStep('pin');
           setPin('');
           return;
@@ -293,7 +355,10 @@ const Login: React.FC<LoginProps> = () => {
         setUserEmail(email);
         setRequiresNewPin(data.requires_new_pin);
         setCurrentUserId(userId);
-        if (isKioskMode) geolocationService.warmUp();
+        if (isKioskMode) {
+           geolocationService.warmUp();
+           prefetchKioskAction(userId);
+        }
         setStep('pin');
         setPin('');
       } catch (err: any) {
@@ -479,33 +544,7 @@ const Login: React.FC<LoginProps> = () => {
       )}
 
       {/* Header - Compact */}
-      <div className="flex items-center justify-between px-6 sm:px-10 py-4 sm:py-6 absolute top-0 left-0 right-0 z-20">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center shadow-xl backdrop-blur-md">
-            <Clock className="text-white/70" size={20} sm:size={24} />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide leading-tight">
-              {(() => {
-                const hour = currentTime.getHours();
-                if (hour >= 5 && hour < 12) return 'Bom dia! ☕️';
-                if (hour >= 12 && hour < 20) return 'Boa tarde! ☀️';
-                return 'Bom turno! 🌙';
-              })()}
-            </h1>
-            <p className="text-[#3b82f6] text-[10px] font-bold uppercase tracking-widest mt-0.5">SEMRUMO MY PORTAL</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4 sm:gap-8">
-          <div className={`hidden sm:flex items-center gap-2.5 text-[10px] font-black px-4 py-2 rounded-full border ${isOnline ? 'text-[#14b8a6] bg-[#042f2e] border-[#14b8a6]/20' : 'text-orange-400 bg-orange-400/10 border-orange-400/20'} shadow-inner`}>
-            <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-[#14b8a6] shadow-[0_0_8px_#14b8a6]' : 'bg-orange-400'}`}></span>
-            ONLINE <span className="text-white/30 ml-1">V1.25</span>
-          </div>
-          <div className="text-white/90 text-4xl sm:text-6xl font-extralight tracking-tight tabular-nums">
-            {currentTime.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
-          </div>
-        </div>
-      </div>
+      <LiveHeader isOnline={isOnline} />
 
       {/* Main Login Area */}
       <div className="flex-1 flex items-center justify-center p-4 relative z-10 pt-20 sm:pt-24 md:pt-16 w-full">

@@ -45,7 +45,7 @@ class GeolocationService {
       const options: PositionOptions = {
         enableHighAccuracy: true,  // Request GPS accuracy
         timeout: timeout,          // Max wait time
-        maximumAge: 0              // Don't use cached position - ALWAYS get fresh location
+        maximumAge: 60000          // Use cached position if up to 1 minute old (Instant Kiosk Lock!)
       };
 
       navigator.geolocation.getCurrentPosition(
@@ -107,7 +107,7 @@ class GeolocationService {
       navigator.geolocation.getCurrentPosition(
         () => console.log('[Geolocation] ✅ Sensor warmed up'),
         () => console.log('[Geolocation] ⚠️ Sensor warm up failed (will retry on actual punch)'),
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
     }
   }
