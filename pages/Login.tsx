@@ -528,11 +528,11 @@ const Login: React.FC<LoginProps> = () => {
                 <div className={`w-full h-16 sm:h-24 md:h-[72px] bg-[#0a1628]/40 border ${employeeError ? 'border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.2)]' : 'border-[#1e3a5f] shadow-inner'} rounded-2xl flex items-center justify-center transition-all duration-300`}>
                   {getInputValue() ? (
                     <div className="text-4xl sm:text-5xl md:text-4xl tracking-[0.35em] font-bold text-white tabular-nums flex items-center">
-                      {step === 'id' ? (accessCode || '').slice(0, 8) : pin ? '••••••'.slice(0, pin.length) : ''}
+                      {step === 'id' ? (accessCode || '').slice(0, 8) : getInputValue() ? '••••••'.slice(0, getInputValue().length) : ''}
                     </div>
                   ) : (
                     <span className="text-sm sm:text-base md:text-sm font-semibold text-slate-400/80 uppercase tracking-widest">
-                      {step === 'id' ? 'Número Colaborador (ID)' : 'Introduza o PIN'}
+                      {step === 'id' ? 'Número Colaborador (ID)' : step === 'new-pin' ? 'Introduza Novo PIN (6 Dígitos)' : step === 'confirm-pin' ? 'Confirme o Novo PIN' : 'Introduza o PIN'}
                     </span>
                   )}
                 </div>
