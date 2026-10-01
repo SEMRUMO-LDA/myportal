@@ -366,6 +366,8 @@ const Login: React.FC<LoginProps> = () => {
             }
           }
         } else {
+          localStorage.removeItem(`myportal_emp_${currentUserId}`);
+          sessionStorage.removeItem(`myportal_emp_${currentUserId}`);
           setEmployeeError(result.error || 'PIN Incorreto.');
           setPin('');
         }
