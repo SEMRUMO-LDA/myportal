@@ -1462,9 +1462,9 @@ function App() {
       schedule_cycle_start_date: emptyToNull(updatedUser.scheduleCycleStartDate)
     };
 
-    // Remove undefined/null keys — Supabase rejects them with 400
+    // Remove undefined keys — Supabase rejects them, but we MUST allow null to clear fields
     const updatePayload = Object.fromEntries(
-      Object.entries(rawUpdatePayload).filter(([_, v]) => v !== undefined && v !== null)
+      Object.entries(rawUpdatePayload).filter(([_, v]) => v !== undefined)
     );
 
     let payload = { ...updatePayload };
