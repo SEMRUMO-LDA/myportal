@@ -32,11 +32,16 @@ async function resolveUserSession(
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
 
-        const { data: userData, error } = await supabase
-            .from('users')
-            .select('id, role, name')
-            .eq('email', email)
-            .single();
+        let query = supabase.from('users').select('id, role, name');
+        
+        if (email.endsWith('@myportal.internal')) {
+            const numericId = email.replace('user', '').replace('@myportal.internal', '');
+            query = query.eq('id', numericId);
+        } else {
+            query = query.eq('email', email);
+        }
+
+        const { data: userData, error } = await query.single();
 
         clearTimeout(timeout);
 
