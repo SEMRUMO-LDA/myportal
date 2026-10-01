@@ -95,7 +95,7 @@ const Login: React.FC<LoginProps> = () => {
 
 
 
-
+  const isSubmittingRef = useRef(false);
   const prefetchedKioskActionRef = useRef<'in' | 'out' | null>(null);
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -176,6 +176,7 @@ const Login: React.FC<LoginProps> = () => {
         setStep('id');
         setAccessCode('');
         setPin('');
+        isSubmittingRef.current = false; // FREE THE LOCK!
       }, 4000);
       return () => clearTimeout(timeout);
     }
@@ -258,14 +259,19 @@ const Login: React.FC<LoginProps> = () => {
   };
 
   const handleEmployeeSubmit = useCallback(async () => {
-    if (isLoggingIn) return; // Guard against double-submit
+    if (isLoggingIn || isSubmittingRef.current) return; // Guard against double-submit
+    isSubmittingRef.current = true;
     setEmployeeError('');
 
     if (step === 'id') {
-      if (!accessCode) return;
+      if (!accessCode) {
+        isSubmittingRef.current = false;
+        return;
+      }
       const userId = parseInt(accessCode);
       if (isNaN(userId) || userId <= 0) {
         setEmployeeError('ID inválido.');
+        isSubmittingRef.current = false;
         return;
       }
 
@@ -276,6 +282,8 @@ const Login: React.FC<LoginProps> = () => {
           const demoUser = getDemoUserById(userId);
           if (!demoUser) {
             setEmployeeError('Utilizador não encontrado.');
+            setIsLoggingIn(false);
+            isSubmittingRef.current = false;
             return;
           }
 
@@ -285,6 +293,8 @@ const Login: React.FC<LoginProps> = () => {
             const isAdmin = ['ADMIN', 'ADMINISTRADOR', 'RH', 'DIRETOR DE UNIDADE', 'RESPONSÁVEL DE DEPARTAMENTO'].includes(normalizedRole);
             if (!isAdmin) {
               setEmployeeError('Acesso restrito a administradores.');
+              setIsLoggingIn(false);
+              isSubmittingRef.current = false;
               return;
             }
           }
@@ -308,6 +318,8 @@ const Login: React.FC<LoginProps> = () => {
             const isAdmin = ['ADMIN', 'Administrador', 'RH', 'Diretor de Unidade', 'Responsável de Departamento'].includes(cachedEmp.role);
             if (!isAdmin) {
               setEmployeeError('Acesso restrito a administradores.');
+              setIsLoggingIn(false);
+              isSubmittingRef.current = false;
               return;
             }
           }
@@ -320,6 +332,8 @@ const Login: React.FC<LoginProps> = () => {
           }
           setStep('pin');
           setPin('');
+          setIsLoggingIn(false);
+          isSubmittingRef.current = false;
           return;
         }
 
@@ -445,6 +459,10 @@ const Login: React.FC<LoginProps> = () => {
         setPin('');
       } finally {
         setIsLoggingIn(false);
+        // Only reset isSubmittingRef if it's NOT a Kiosk Success waiting for timeout
+        if (!isKioskMode || step === 'pin') {
+          isSubmittingRef.current = false;
+        }
       }
     } else if (step === 'new-pin') {
       if (newPin.length === 6) {
@@ -480,6 +498,7 @@ const Login: React.FC<LoginProps> = () => {
           setNewPin('');
         }
       }
+      isSubmittingRef.current = false;
     }
   }, [step, accessCode, pin, newPin, confirmPin, isLoggingIn, loginType, userEmail, requiresNewPin, currentUserId, isKioskMode]);
 
