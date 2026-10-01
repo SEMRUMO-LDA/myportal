@@ -352,6 +352,8 @@ const Login: React.FC<LoginProps> = () => {
 
         if (error || !data) {
           setEmployeeError('Utilizador não encontrado.');
+          setIsLoggingIn(false);
+          isSubmittingRef.current = false;
           return;
         }
 
@@ -360,6 +362,8 @@ const Login: React.FC<LoginProps> = () => {
           const isAdmin = ['ADMIN', 'Administrador', 'RH', 'Diretor de Unidade', 'Responsável de Departamento'].includes(data.role);
           if (!isAdmin) {
             setEmployeeError('Acesso restrito a administradores.');
+            setIsLoggingIn(false);
+            isSubmittingRef.current = false;
             return;
           }
         }
@@ -449,6 +453,8 @@ const Login: React.FC<LoginProps> = () => {
           sessionStorage.removeItem(`myportal_emp_${currentUserId}`);
           setEmployeeError(result.error || 'PIN Incorreto.');
           setPin('');
+          setIsLoggingIn(false);
+          isSubmittingRef.current = false;
         }
       } catch (err: any) {
         if (err?.message === 'timeout') {
@@ -457,13 +463,10 @@ const Login: React.FC<LoginProps> = () => {
           setEmployeeError('Erro de ligação.');
         }
         setPin('');
-      } finally {
         setIsLoggingIn(false);
-        // Only reset isSubmittingRef if it's NOT a Kiosk Success waiting for timeout
-        if (!isKioskMode || step === 'pin') {
-          isSubmittingRef.current = false;
-        }
+        isSubmittingRef.current = false;
       }
+      // Removed the finally block that was unconditionally clearing the loader and lock
     } else if (step === 'new-pin') {
       if (newPin.length === 6) {
         setStep('confirm-pin');
