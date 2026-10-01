@@ -106,15 +106,27 @@ const KioskDashboard: React.FC<KioskDashboardProps> = ({ user, onClockIn, onBrea
             return null;
         }
 
-        const template = scheduleTemplates.find(t => t.id === user.scheduleTemplateId);
+        const template = scheduleTemplates.find(t => String(t.id) === String(user.scheduleTemplateId));
         if (!template) return null;
 
         const today = new Date();
         const dayOfWeek = today.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
 
-        // Check if template has weeklyPattern
-        if (template.weeklyPattern && template.weeklyPattern.length > 0) {
-            const daySchedule = template.weeklyPattern.find(d => d.day === dayOfWeek);
+        // If it's a cyclical schedule (rotating shifts)
+        if (template.cycleDays && template.cycleDays > 0 && template.cyclePattern && template.cyclePattern.length > 0) {
+            if (!user.scheduleCycleStartDate) {
+                // Cannot calculate cyclical schedule without a start date
+                return null;
+            }
+            const cycleStart = new Date(user.scheduleCycleStartDate);
+            // Calculate days diff ignoring timezones
+            const diffTime = today.getTime() - cycleStart.getTime();
+            const daysSinceStart = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            // If the start date is in the future, maybe it hasn't started yet, but let's just do math:
+            const cycleDay = ((daysSinceStart % template.cycleDays) + template.cycleDays) % template.cycleDays + 1; // 1-based safe modulo
+
+            const daySchedule = template.cyclePattern.find(d => d.dayIndex === cycleDay);
             if (daySchedule && !daySchedule.isOff) {
                 return {
                     start: daySchedule.start,
@@ -123,15 +135,12 @@ const KioskDashboard: React.FC<KioskDashboardProps> = ({ user, onClockIn, onBrea
                     breakEnd: daySchedule.breakEnd
                 };
             }
+            return null; // It's an off day or not found in cycle
         }
 
-        // Check if template has cyclePattern (rotating shifts)
-        if (template.cyclePattern && template.cycleDays && user.scheduleCycleStartDate) {
-            const cycleStart = new Date(user.scheduleCycleStartDate);
-            const daysSinceStart = Math.floor((today.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24));
-            const cycleDay = (daysSinceStart % template.cycleDays) + 1; // 1-based
-
-            const daySchedule = template.cyclePattern.find(d => d.dayIndex === cycleDay);
+        // Check if template has weeklyPattern
+        if (template.weeklyPattern && template.weeklyPattern.length > 0) {
+            const daySchedule = template.weeklyPattern.find(d => d.day === dayOfWeek);
             if (daySchedule && !daySchedule.isOff) {
                 return {
                     start: daySchedule.start,
