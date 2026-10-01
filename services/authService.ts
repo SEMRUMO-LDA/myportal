@@ -87,11 +87,18 @@ class AuthService {
    */
   async getUserData(email: string, authUuid?: string): Promise<UserData | null> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('users')
-        .select('id, email, name, role, company, department, must_change_password')
-        .eq('email', email.toLowerCase())
-        .single();
+        .select('id, email, name, role, company, department, must_change_password');
+
+      if (email.endsWith('@myportal.internal')) {
+        const numericId = email.replace('user', '').replace('@myportal.internal', '');
+        query = query.eq('id', numericId);
+      } else {
+        query = query.eq('email', email.toLowerCase());
+      }
+
+      const { data, error } = await query.single();
 
       if (error || !data) {
         console.log('Utilizador não encontrado na tabela users');
