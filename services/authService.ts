@@ -34,10 +34,25 @@ class AuthService {
 
     try {
       // 1. Autenticar com Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      let { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: credentials.email.toLowerCase().trim(),
         password: credentials.password
       });
+
+      // Auto-create missing auth accounts for internal collaborators
+      if (authError && authError.message.includes('Invalid login credentials') && credentials.email.endsWith('@myportal.internal')) {
+        console.log('[AuthService] Synthetic user might not exist in Auth, attempting to create...');
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: credentials.email.toLowerCase().trim(),
+          password: credentials.password
+        });
+        
+        if (!signUpError && signUpData.user && signUpData.session) {
+          console.log('[AuthService] Successfully created synthetic Auth account on the fly!');
+          authData = signUpData;
+          authError = null;
+        }
+      }
 
       if (authError) {
         // Retry once on transient errors (network, 5xx)
