@@ -3699,6 +3699,7 @@ function App() {
           dataReady={dataReady}
           absences={absences}
           timeLogs={timeLogs}
+          setTimeLogs={setTimeLogs}
           expenses={expenses}
           messages={messages}
           events={events}
@@ -3775,7 +3776,7 @@ const RedirectToPortal = () => {
 };
 
 // Inner Component to use useAuth hook
-const AppRoutes = ({ users, loading, dataReady, absences, timeLogs, expenses, messages, events, lockedMonths, jobRoles, holidays, departments, anomalyTypes, locations, schedulePeriods, scheduleTemplates, leaveTypes, leaves, anomalies, onUpdateUser, onAddUser, onUpdateAbsence, onAddAbsence, onAddExpense, onUpdateExpense, onAddTimeLog, onClockIn, onBreakStart, onBreakEnd, onClockOut, onSendMessage, onMarkMessageRead, onAddLock, onDeleteLock, onAddRole, onDeleteRole, onAddHoliday, onDeleteHoliday, onAddDepartment, onDeleteDepartment, onUpdateDepartment, onAddAnomalyType, onDeleteAnomalyType, onAddLocation, onUpdateLocation, onDeleteLocation, onAddPeriod, onUpdatePeriod, onDeletePeriod, onAddScheduleTemplate, onUpdateScheduleTemplate, onDeleteScheduleTemplate, onAddLeaveType, onUpdateLeaveType, onDeleteLeaveType, onAddLeave, onUpdateLeave, onUpdateAnomaly, onDeleteTimeLog, hourBankAdjustments, onAddHourBankAdjustment, notifications, unreadNotifCount, surveyResponses, anonymousFeedbacks, onMarkNotificationRead, onMarkAllNotificationsRead }: any) => {
+const AppRoutes = ({ users, loading, dataReady, absences, timeLogs, setTimeLogs, expenses, messages, events, lockedMonths, jobRoles, holidays, departments, anomalyTypes, locations, schedulePeriods, scheduleTemplates, leaveTypes, leaves, anomalies, onUpdateUser, onAddUser, onUpdateAbsence, onAddAbsence, onAddExpense, onUpdateExpense, onAddTimeLog, onClockIn, onBreakStart, onBreakEnd, onClockOut, onSendMessage, onMarkMessageRead, onAddLock, onDeleteLock, onAddRole, onDeleteRole, onAddHoliday, onDeleteHoliday, onAddDepartment, onDeleteDepartment, onUpdateDepartment, onAddAnomalyType, onDeleteAnomalyType, onAddLocation, onUpdateLocation, onDeleteLocation, onAddPeriod, onUpdatePeriod, onDeletePeriod, onAddScheduleTemplate, onUpdateScheduleTemplate, onDeleteScheduleTemplate, onAddLeaveType, onUpdateLeaveType, onDeleteLeaveType, onAddLeave, onUpdateLeave, onUpdateAnomaly, onDeleteTimeLog, hourBankAdjustments, onAddHourBankAdjustment, notifications, unreadNotifCount, surveyResponses, anonymousFeedbacks, onMarkNotificationRead, onMarkAllNotificationsRead }: any) => {
   const { user, logout } = useAuth();
 
   // Derived state for current user full profile (normalized ID check with email fallback)
