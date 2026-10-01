@@ -14,8 +14,8 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
-        registerType: 'prompt',
-        injectRegister: null,
+        registerType: 'autoUpdate',
+        injectRegister: 'auto',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
         manifest: {
           name: 'My Portal',
@@ -37,7 +37,9 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-          clientsClaim: true
+          clientsClaim: true,
+          skipWaiting: true,
+          cleanupOutdatedCaches: true
         }
       })
     ],

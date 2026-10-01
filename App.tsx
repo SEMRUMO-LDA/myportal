@@ -1373,6 +1373,24 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // --- iOS/PWA Memory Leak Prevention ---
+  // If app is kept in background for >2 hours on a phone, force a refresh 
+  // to clear RAM bloat and DOM memory leaks common in long-lived SPAs.
+  useEffect(() => {
+    let hiddenTime = 0;
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        hiddenTime = Date.now();
+      } else {
+        if (hiddenTime > 0 && Date.now() - hiddenTime > 1000 * 60 * 60 * 2) {
+          window.location.reload();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   // Actions
   const handleUpdateUser = async (updatedUser: User, persist: boolean = true, options?: { silent?: boolean }) => {
     // Detect Who is Changing
