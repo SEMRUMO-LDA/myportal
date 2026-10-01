@@ -153,8 +153,14 @@ const Dashboard: React.FC<DashboardProps> = ({ users, absences, logs, events, an
 
     // --- UI COMPONENTS ---
 
-    const StatCard = ({ title, value, icon: Icon, bgClass, textClass, onClick }: any) => (
-        <div onClick={onClick} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between cursor-pointer hover:shadow-md transition-all">
+    const StatCard = ({ title, value, icon: Icon, bgClass, textClass, onClick, hasBadge }: any) => (
+        <div onClick={onClick} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between cursor-pointer hover:shadow-md transition-all relative">
+            {hasBadge && (
+                <span className="flex absolute h-3 w-3 top-4 right-4 z-10">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 shadow-sm shadow-red-500/50"></span>
+                </span>
+            )}
             <div>
                 <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${textClass}`}>{title}</p>
                 <h3 className="text-3xl font-bold text-gray-800">{value}</h3>
@@ -209,6 +215,7 @@ const Dashboard: React.FC<DashboardProps> = ({ users, absences, logs, events, an
                     bgClass="bg-emerald-50"
                     textClass="text-emerald-500"
                     onClick={() => navigate('/admin/absences')}
+                    hasBadge={stats.pendingVacations > 0}
                 />
                 <StatCard
                     title="Justificações Pendentes"
@@ -217,6 +224,7 @@ const Dashboard: React.FC<DashboardProps> = ({ users, absences, logs, events, an
                     bgClass="bg-amber-50"
                     textClass="text-amber-500"
                     onClick={() => navigate('/admin/absences', { state: { activeTab: 'JUSTIFICATIONS' } })}
+                    hasBadge={stats.pendingJustifications > 0}
                 />
                 <StatCard
                     title="Correções Pendentes"
@@ -225,6 +233,7 @@ const Dashboard: React.FC<DashboardProps> = ({ users, absences, logs, events, an
                     bgClass="bg-indigo-50"
                     textClass="text-indigo-500"
                     onClick={() => navigate('/admin/attendance')}
+                    hasBadge={stats.pendingCorrections > 0}
                 />
             </div>
 

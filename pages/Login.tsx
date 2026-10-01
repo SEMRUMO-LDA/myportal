@@ -65,6 +65,15 @@ const Login: React.FC<LoginProps> = () => {
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [employeeError, setEmployeeError] = useState('');
+  const [isShaking, setIsShaking] = useState(false);
+
+  useEffect(() => {
+    if (employeeError && !employeeError.includes('sucesso')) {
+      setIsShaking(true);
+      const timer = setTimeout(() => setIsShaking(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [employeeError]);
   
   // New States for Authentication
   const [userEmail, setUserEmail] = useState('');
@@ -474,8 +483,15 @@ const Login: React.FC<LoginProps> = () => {
             <Clock className="text-white/70" size={20} sm:size={24} />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide leading-tight">SEMRUMO</h1>
-            <p className="text-[#3b82f6] text-[10px] font-bold uppercase tracking-widest mt-0.5">MY PORTAL</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide leading-tight">
+              {(() => {
+                const hour = currentTime.getHours();
+                if (hour >= 5 && hour < 12) return 'Bom dia! ☕️';
+                if (hour >= 12 && hour < 20) return 'Boa tarde! ☀️';
+                return 'Bom turno! 🌙';
+              })()}
+            </h1>
+            <p className="text-[#3b82f6] text-[10px] font-bold uppercase tracking-widest mt-0.5">SEMRUMO MY PORTAL</p>
           </div>
         </div>
         <div className="flex items-center gap-4 sm:gap-8">
@@ -524,8 +540,8 @@ const Login: React.FC<LoginProps> = () => {
               )}
 
               {/* Input Display Area */}
-              <div className="relative mb-5 sm:mb-8 md:mb-5">
-                <div className={`w-full h-16 sm:h-24 md:h-[72px] bg-[#0a1628]/40 border ${employeeError ? 'border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.2)]' : 'border-[#1e3a5f] shadow-inner'} rounded-2xl flex items-center justify-center transition-all duration-300`}>
+              <div className={`relative mb-5 sm:mb-8 md:mb-5 ${isShaking ? 'animate-shake' : ''}`}>
+                <div className={`w-full h-16 sm:h-24 md:h-[72px] bg-[#0a1628]/40 border ${employeeError && !employeeError.includes('sucesso') ? 'border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]' : 'border-[#1e3a5f] shadow-inner'} rounded-2xl flex items-center justify-center transition-all duration-300`}>
                   {getInputValue() ? (
                     <div className="text-4xl sm:text-5xl md:text-4xl tracking-[0.35em] font-bold text-white tabular-nums flex items-center">
                       {step === 'id' ? (accessCode || '').slice(0, 8) : getInputValue() ? '••••••'.slice(0, getInputValue().length) : ''}
