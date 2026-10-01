@@ -414,6 +414,8 @@ const Login: React.FC<LoginProps> = () => {
             if (requiresNewPin || isDefaultPin) {
               setStep('new-pin');
               setNewPin('');
+              setIsLoggingIn(false);
+              isSubmittingRef.current = false;
             } else {
               // Trigger AuthContext login with demo session
               const { login } = useAuthRef.current;
@@ -450,6 +452,8 @@ const Login: React.FC<LoginProps> = () => {
           if (requiresNewPin || isDefaultPin) {
             setStep('new-pin');
             setNewPin('');
+            setIsLoggingIn(false);
+            isSubmittingRef.current = false;
           } else {
             if (isKioskMode) {
               performKioskAction(result.user);
@@ -479,9 +483,11 @@ const Login: React.FC<LoginProps> = () => {
         setStep('confirm-pin');
         setConfirmPin('');
       }
+      isSubmittingRef.current = false;
     } else if (step === 'confirm-pin') {
       if (confirmPin.length === 6) {
         if (newPin === confirmPin) {
+          setIsLoggingIn(true);
           try {
             const { error: authError } = await supabase.auth.updateUser({
               password: newPin
@@ -495,12 +501,14 @@ const Login: React.FC<LoginProps> = () => {
 
             if (isKioskMode) {
               performKioskAction({ id: currentUserId, name: currentUserName });
+              // Note: performKioskAction handles resetting UI on success
             } else {
               setEmployeeError('✅ PIN atualizado com sucesso!');
               setTimeout(() => window.location.reload(), 2000);
             }
           } catch (err) {
             setEmployeeError('Erro ao atualizar PIN.');
+            setIsLoggingIn(false);
           }
         } else {
           setEmployeeError('Os PINs não coincidem.');
