@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { User, LogOut, Building2, UserCircle, MessageSquare, LayoutDashboard, Clock, Menu, X, Fingerprint, ReceiptEuro, Gift, TreePalm, Users } from 'lucide-react';
 import { User as UserType } from '../types';
 import { NavLink } from 'react-router-dom';
-import LeoAssistant from './LeoAssistant';
+const LeoAssistant = React.lazy(() => import('./LeoAssistant'));
 
 interface CollaboratorLayoutProps {
     user: UserType | null;
@@ -125,7 +125,9 @@ const CollaboratorLayout: React.FC<CollaboratorLayoutProps> = ({ user, onLogout,
             {/* Notification slide-over removed */}
 
             {/* LEO Assistant */}
-            <LeoAssistant currentUser={user} context="kiosk" />
+            <React.Suspense fallback={null}>
+                <LeoAssistant currentUser={user} context="kiosk" />
+            </React.Suspense>
         </div>
     );
 };

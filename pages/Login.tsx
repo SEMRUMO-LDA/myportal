@@ -8,8 +8,8 @@ import { authService } from '../services/authService';
 import { UserRole, UserSession } from '../types/auth';
 import { isKioskAuthorized } from '../services/sessionService';
 import { kioskClockService } from '../services/kioskClockService';
-import PasswordRecoveryModal from '../components/PasswordRecoveryModal';
-import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
+const PasswordRecoveryModal = React.lazy(() => import('../components/PasswordRecoveryModal'));
+const PrivacyPolicyModal = React.lazy(() => import('../components/PrivacyPolicyModal'));
 import { versionService } from '../services/versionService';
 import { isDemoMode, getDemoUserById, validateDemoLogin, saveDemoSession, demoUserToSession } from '../services/demoMode';
 import { geolocationService } from '../services/geolocationService';
@@ -582,15 +582,20 @@ const Login: React.FC<LoginProps> = () => {
         if (newPin === confirmPin) {
           setIsLoggingIn(true);
           try {
-            const { error: authError } = await supabase.auth.updateUser({
-              password: newPin
-            });
-            if (authError) throw authError;
-
-            await supabase
+            // 1. Atualizar obrigatoriamente na base de dados (tabela users)
+            const { error: dbError } = await supabase
               .from('users')
               .update({ requires_new_pin: false, must_change_password: false, pin: newPin })
               .eq('id', currentUserId);
+
+            if (dbError) throw dbError;
+
+            // 2. Tentar sincronizar também no Supabase Auth se houver sessão ativa
+            try {
+              await supabase.auth.updateUser({ password: newPin });
+            } catch (authErr) {
+              console.warn('[Login] Atualização secundária no Supabase Auth ignorada:', authErr);
+            }
 
             // Clear cache for this employee so they are never prompted again
             sessionStorage.removeItem(`myportal_emp_${currentUserId}`);
@@ -852,13 +857,17 @@ const Login: React.FC<LoginProps> = () => {
         </button>
       </div>
 
-      <PasswordRecoveryModal isOpen={showPasswordRecovery} onClose={() => setShowPasswordRecovery(false)} />
-      {showPrivacyPolicy && (
-        <PrivacyPolicyModal 
-          onAccept={() => setShowPrivacyPolicy(false)}
-          onDecline={() => setShowPrivacyPolicy(false)}
-        />
-      )}
+      <React.Suspense fallback={null}>
+        {showPasswordRecovery && (
+          <PasswordRecoveryModal isOpen={showPasswordRecovery} onClose={() => setShowPasswordRecovery(false)} />
+        )}
+        {showPrivacyPolicy && (
+          <PrivacyPolicyModal 
+            onAccept={() => setShowPrivacyPolicy(false)}
+            onDecline={() => setShowPrivacyPolicy(false)}
+          />
+        )}
+      </React.Suspense>
     </div>
   );
 };

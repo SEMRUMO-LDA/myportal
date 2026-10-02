@@ -77,6 +77,11 @@ export default defineConfig(({ mode }) => {
                 return 'vendor-ai';
               }
 
+              // Motion / Animations isolado
+              if (id.includes('framer-motion')) {
+                return 'vendor-motion';
+              }
+
               // TUDO o resto junto (React, Router, libs, etc) - evita dependency issues
               return 'vendor';
             }

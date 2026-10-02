@@ -11,7 +11,7 @@ import VehicleBookingModal from '../components/VehicleBookingModal';
 import KioskLoadingScreen from '../components/KioskLoadingScreen';
 import PulseSurveyWidget from '../components/PulseSurveyWidget';
 import ProfileCompletionModal from '../components/ProfileCompletionModal';
-import LeoAssistant from '../components/LeoAssistant';
+const LeoAssistant = React.lazy(() => import('../components/LeoAssistant'));
 import CollaboratorCard from '../components/CollaboratorCard';
 import ClockButton from '../components/ClockButton';
 import { useToast } from '../context/ToastContext';
@@ -1490,7 +1490,9 @@ const KioskDashboard: React.FC<KioskDashboardProps> = ({ user, onClockIn, onBrea
                 )}
 
                 {/* LEO Assistant */}
-                <LeoAssistant currentUser={user} context="kiosk" />
+                <React.Suspense fallback={null}>
+                    <LeoAssistant currentUser={user} context="kiosk" />
+                </React.Suspense>
 
                 <VehicleBookingModal
                     isOpen={showBookingModal}

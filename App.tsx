@@ -570,16 +570,16 @@ function App() {
         ]);
 
         const batch2 = await Promise.all([
-          supabase.from('departments').select('*').order('name', { ascending: true }),
-          supabase.from('job_roles').select('*').order('name', { ascending: true }),
+          canViewAllRecords ? supabase.from('departments').select('*').order('name', { ascending: true }) : Promise.resolve({ data: [] }),
+          canViewAllRecords ? supabase.from('job_roles').select('*').order('name', { ascending: true }) : Promise.resolve({ data: [] }),
           supabase.from('holidays').select('*').order('name', { ascending: true }),
-          supabase.from('schedule_periods').select('*').order('name', { ascending: true }),
-          supabase.from('locked_months').select('*').order('year', { ascending: false }).order('month', { ascending: false })
+          canViewAllRecords ? supabase.from('schedule_periods').select('*').order('name', { ascending: true }) : Promise.resolve({ data: [] }),
+          canViewAllRecords ? supabase.from('locked_months').select('*').order('year', { ascending: false }).order('month', { ascending: false }) : Promise.resolve({ data: [] })
         ]);
 
         const batch3 = await Promise.all([
           anomaliesQuery,
-          supabase.from('anomaly_types').select('*').order('name', { ascending: true }),
+          canViewAllRecords ? supabase.from('anomaly_types').select('*').order('name', { ascending: true }) : Promise.resolve({ data: [] }),
           hbAdjQuery,
           expensesQuery,
           messagesQuery
@@ -921,6 +921,8 @@ function App() {
   // POLLING: Refresh critical tables every 60s to keep data fresh across sessions
   useEffect(() => {
     const refreshData = async () => {
+      // Skip polling when tab is hidden or minimized to save battery and network
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         if (!currentUser) return;
         const roleStr = (currentUser.role || '').toUpperCase();
@@ -1107,7 +1109,7 @@ function App() {
       }
     };
 
-    const interval = setInterval(refreshData, 60000);
+    const interval = setInterval(refreshData, 120000); // 2 minutes (instead of 60s)
     return () => clearInterval(interval);
   }, [leaveTypes, currentUser]);
 

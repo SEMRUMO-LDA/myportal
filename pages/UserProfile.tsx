@@ -833,28 +833,9 @@ const UserProfile: React.FC<UserProfileProps> = ({ users, absences = [], roles =
                             addToast('error', 'O PIN deve ter exatamente 6 dígitos.');
                             return;
                           }
-
-                          if (!formData.authId) {
-                            addToast('error', 'Utilizador não tem ID de autenticação associado.');
-                            return;
-                          }
- 
                           try {
-                            const { supabaseAdmin, isAdminClientAvailable } = await import('../services/supabaseAdminClient');
- 
-                            if (isAdminClientAvailable()) {
-                              const { error } = await supabaseAdmin.auth.admin.updateUserById(
-                                formData.authId,
-                                { password: formData.pin }
-                              );
-                              if (error) {
-                                addToast('error', `Erro ao atualizar password: ${error.message}`);
-                                return;
-                              }
-                            }
- 
-                            // Sincronizar ambas as colunas na BD para eliminar qualquer duplicidade
-                            await supabase
+                            // 1. Sincronizar na tabela users com obrigatoriedade de alteração
+                            const { error: dbError } = await supabase
                               .from('users')
                               .update({ 
                                 pin: formData.pin,
@@ -863,8 +844,24 @@ const UserProfile: React.FC<UserProfileProps> = ({ users, absences = [], roles =
                               })
                               .eq('id', formData.id);
 
+                            if (dbError) {
+                              addToast('error', `Erro ao gravar PIN: ${dbError.message}`);
+                              return;
+                            }
+
+                            // 2. Se o cliente admin estiver disponível e houver authId, sincronizar no Supabase Auth
+                            try {
+                              const { supabaseAdmin, isAdminClientAvailable } = await import('../services/supabaseAdminClient');
+                              if (isAdminClientAvailable() && formData.authId) {
+                                await supabaseAdmin.auth.admin.updateUserById(
+                                  formData.authId,
+                                  { password: formData.pin }
+                                );
+                              }
+                            } catch {}
+
                             setFormData(prev => ({ ...prev, requiresNewPin: true }));
-                            addToast('success', `✅ Password/PIN atualizado para ${formData.pin}. Colaborador terá de alterá-lo no próximo acesso.`);
+                            addToast('success', `✅ PIN atualizado para ${formData.pin}. O colaborador já pode aceder no Kiosk.`);
                           } catch (err: any) {
                             addToast('error', `Erro: ${err.message}`);
                           }
