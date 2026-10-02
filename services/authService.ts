@@ -41,27 +41,45 @@ class AuthService {
 
       // Auto-create missing auth accounts for internal collaborators
       if (authError && authError.message.includes('Invalid login credentials') && credentials.email.endsWith('@myportal.internal')) {
-        console.log('[AuthService] Synthetic user might not exist in Auth, attempting to create...');
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: credentials.email.toLowerCase().trim(),
-          password: credentials.password
-        });
+        console.log('[AuthService] Synthetic user might not exist in Auth, attempting to create via Admin API to bypass rate limits...');
         
-        if (!signUpError && signUpData.user && signUpData.session) {
-          console.log('[AuthService] Successfully created synthetic Auth account on the fly!');
-          authData = signUpData;
-          authError = null;
+        try {
+          const { supabaseAdmin } = await import('./supabaseAdminClient');
+          const { data: signUpData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
+            email: credentials.email.toLowerCase().trim(),
+            password: credentials.password,
+            email_confirm: true
+          });
           
-          // Link the new Auth ID to the user profile
-          try {
-            const numericId = parseInt(credentials.email.replace('user', '').replace('@myportal.internal', ''));
-            if (!isNaN(numericId) && numericId > 0) {
-              await supabase.from('users').update({ auth_id: signUpData.user.id }).eq('id', numericId);
-              console.log('[AuthService] Successfully linked new Auth ID to user profile');
+          if (!signUpError && signUpData.user) {
+            console.log('[AuthService] Successfully created synthetic Auth account on the fly!');
+            
+            // Sign in again now that the account exists
+            const { data: newAuthData, error: newAuthError } = await supabase.auth.signInWithPassword({
+              email: credentials.email.toLowerCase().trim(),
+              password: credentials.password
+            });
+            
+            if (!newAuthError && newAuthData.user && newAuthData.session) {
+              authData = newAuthData;
+              authError = null;
+              
+              // Link the new Auth ID to the user profile
+              try {
+                const numericId = parseInt(credentials.email.replace('user', '').replace('@myportal.internal', ''));
+                if (!isNaN(numericId) && numericId > 0) {
+                  await supabase.from('users').update({ auth_id: signUpData.user.id }).eq('id', numericId);
+                  console.log('[AuthService] Successfully linked new Auth ID to user profile');
+                }
+              } catch (e) {
+                console.error('[AuthService] Failed to link auth_id:', e);
+              }
             }
-          } catch (e) {
-            console.error('[AuthService] Failed to link auth_id:', e);
+          } else {
+            console.error('[AuthService] Failed to auto-create user:', signUpError);
           }
+        } catch (adminErr) {
+          console.error('[AuthService] Failed to use Admin API:', adminErr);
         }
       }
 
