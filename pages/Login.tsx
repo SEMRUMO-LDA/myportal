@@ -375,7 +375,15 @@ const Login: React.FC<LoginProps> = () => {
           }
         }
 
-        const email = `user${userId}@myportal.internal`;
+        let emailToUse = `user${userId}@myportal.internal`;
+        const role = (data.role || '').toUpperCase();
+        const isAdmin = ['ADMIN', 'ADMINISTRADOR', 'RH', 'DIRETOR DE UNIDADE', 'RESPONSÁVEL DE DEPARTAMENTO'].includes(role);
+        
+        if (isAdmin && data.email) {
+          emailToUse = data.email;
+        }
+
+        const email = emailToUse;
         setCachedEmployee({ id: userId, email, role: data.role, requires_new_pin: !!data.requires_new_pin });
         setUserEmail(email);
         setRequiresNewPin(data.requires_new_pin);
