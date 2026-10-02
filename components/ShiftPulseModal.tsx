@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, SurveyType } from '../types';
 import { Sparkles, X, CheckCircle2, Rocket, Smile, Zap, AlertTriangle, Send } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
@@ -63,6 +63,15 @@ export const ShiftPulseModal: React.FC<ShiftPulseModalProps> = ({
   const [comment, setComment] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || isCompleted || isSubmitting) return;
+    // Auto-fecho e logout após 6 segundos se o utilizador não interagir
+    const timer = setTimeout(() => {
+      onClose();
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [isOpen, isCompleted, isSubmitting, onClose]);
 
   if (!isOpen) return null;
 

@@ -22,36 +22,41 @@ interface UserProfileProps {
   anomalies?: Anomaly[];
 }
 
-const InputField = ({ label, name, type = 'text', icon: Icon, fullWidth = false, readOnly = false, placeholder = '', required = false, formData, handleChange, errors, ...rest }: any) => (
-  <div className={`flex flex-col gap-1.5 ${fullWidth ? 'col-span-2' : ''}`}>
-    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
-      {Icon && <Icon size={14} />} {label} {required && <span className="text-red-500">*</span>}
-      {readOnly && <Lock size={10} className="text-gray-400" />}
-    </label>
-    <div className="relative">
-      <input
-        type={type}
-        name={name}
-        readOnly={readOnly}
-        placeholder={placeholder}
-        value={(formData as any)[name] || ''}
-        onChange={handleChange}
-        {...rest}
-        className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all ${readOnly
-          ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed select-all'
-          : errors[name]
-            ? 'bg-red-50 border-red-300 focus:ring-red-500'
-            : 'bg-white border-gray-300'
-          }`}
-      />
-      {errors[name] && (
-        <div className="flex items-center gap-1 mt-1 text-xs text-red-600 font-medium">
-          <AlertCircle size={12} /> {errors[name]}
-        </div>
-      )}
+const InputField = ({ label, name, type = 'text', icon: Icon, fullWidth = false, readOnly = false, placeholder = '', required = false, formData, handleChange, errors, ...rest }: any) => {
+  const rawValue = (formData as any)?.[name];
+  const displayValue = rawValue !== undefined && rawValue !== null ? rawValue : '';
+
+  return (
+    <div className={`flex flex-col gap-1.5 ${fullWidth ? 'col-span-2' : ''}`}>
+      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+        {Icon && <Icon size={14} />} {label} {required && <span className="text-red-500">*</span>}
+        {readOnly && <Lock size={10} className="text-gray-400" />}
+      </label>
+      <div className="relative">
+        <input
+          type={type}
+          name={name}
+          readOnly={readOnly}
+          placeholder={placeholder}
+          value={displayValue}
+          onChange={handleChange}
+          {...rest}
+          className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all ${readOnly
+            ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed select-all'
+            : errors && errors[name]
+              ? 'bg-red-50 border-red-300 focus:ring-red-500'
+              : 'bg-white border-gray-300'
+            }`}
+        />
+        {errors && errors[name] && (
+          <div className="flex items-center gap-1 mt-1 text-xs text-red-600 font-medium">
+            <AlertCircle size={12} /> {errors[name]}
+          </div>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const UserProfile: React.FC<UserProfileProps> = ({ users, absences = [], roles = [], departments = [], locations = [], scheduleTemplates = [], leftOutProp, leaves = [], leaveTypes = [], anomalies = [], onUpdateUser, onAddUser }: any) => {
   const { id } = useParams<{ id: string }>();
@@ -169,31 +174,91 @@ const UserProfile: React.FC<UserProfileProps> = ({ users, absences = [], roles =
     }
   };
 
-  // Initial Load - Only sync when ID changes or if data hasn't been loaded yet for this ID
+  // Initial Load - Direct DB fetch to guarantee 100% fresh and complete record
   const lastLoadedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isNew && id && !isSavingRef.current) {
-      const foundUser = users.find(u => u.id === parseInt(id));
+      const loadUserDirectly = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', parseInt(id))
+            .single();
 
-      // Only update formData if the ID has actually changed
-      if (foundUser && lastLoadedIdRef.current !== id) {
-        setFormData({
-          ...foundUser,
-          birthDate: formatDateForInput(foundUser.birthDate),
-          admissionDate: formatDateForInput(foundUser.admissionDate),
-          onboardingTasks: foundUser.onboardingTasks || DEFAULT_ONBOARDING_TASKS,
-          documents: foundUser.documents || [],
-          attendanceConfig: {
-            ...DEFAULT_ATTENDANCE_CONFIG,
-            ...foundUser.attendanceConfig
+          if (data && !error) {
+            setFormData({
+              id: data.id,
+              authId: data.auth_id,
+              name: data.name || '',
+              role: data.role || '',
+              company: data.company || Company.SEMRUMO,
+              email: data.email || '',
+              department: data.department || '',
+              status: data.status || UserStatus.ACTIVE,
+              nif: data.nif || '',
+              cc: data.cc || '',
+              niss: data.niss || '',
+              nationality: data.nationality || '',
+              maritalStatus: data.marital_status || '',
+              address: data.address || '',
+              birthDate: formatDateForInput(data.birth_date),
+              admissionDate: formatDateForInput(data.admission_date),
+              phone: data.phone || '',
+              mobilePhone: data.mobile_phone || '',
+              whatsappEnabled: data.whatsapp_enabled ?? false,
+              photoUrl: data.photo_url || 'https://picsum.photos/200/200',
+              emergencyContact: data.emergency_contact || '',
+              bio: data.bio || '',
+              iban: data.iban || '',
+              workStartTime: data.work_start_time || '09:00',
+              workEndTime: data.work_end_time || '18:00',
+              lunchStartTime: data.lunch_start_time || '13:00',
+              lunchEndTime: data.lunch_end_time || '14:00',
+              vacationDaysYearly: data.vacation_days_yearly ?? 22,
+              vacationDaysCarryover: data.vacation_days_carryover ?? 0,
+              vacationAdjustments: data.vacation_adjustments ?? 0,
+              requiresNewPin: !!(data.requires_new_pin || data.must_change_password),
+              pin: data.pin || '',
+              locationId: data.location_id || undefined,
+              locationIds: data.location_ids || (data.location_id ? [data.location_id] : []),
+              scheduleTemplateId: data.schedule_template_id || undefined,
+              scheduleCycleStartDate: formatDateForInput(data.schedule_cycle_start_date),
+              onboardingTasks: data.onboarding_tasks || DEFAULT_ONBOARDING_TASKS,
+              documents: data.documents || [],
+              attendanceConfig: {
+                ...DEFAULT_ATTENDANCE_CONFIG,
+                ...data.attendance_config
+              }
+            });
+            lastLoadedIdRef.current = id;
+            return;
           }
-        });
-        lastLoadedIdRef.current = id;
-      } else if (!foundUser && users.length > 0) {
-        // Only navigate away if users list is not empty and user not found
-        navigate('/admin/users');
-      }
+        } catch (e) {
+          console.warn('[UserProfile] Direct fetch fallback to props:', e);
+        }
+
+        const foundUser = users.find(u => u.id === parseInt(id));
+        if (foundUser) {
+          setFormData({
+            ...foundUser,
+            birthDate: formatDateForInput(foundUser.birthDate),
+            admissionDate: formatDateForInput(foundUser.admissionDate),
+            onboardingTasks: foundUser.onboardingTasks || DEFAULT_ONBOARDING_TASKS,
+            documents: foundUser.documents || [],
+            attendanceConfig: {
+              ...DEFAULT_ATTENDANCE_CONFIG,
+              ...foundUser.attendanceConfig
+            }
+          });
+          lastLoadedIdRef.current = id;
+        } else if (users.length > 0) {
+          navigate('/admin/users');
+        }
+      };
+
+      loadUserDirectly();
     }
   }, [id, users, navigate, isNew]);
 
@@ -664,6 +729,48 @@ const UserProfile: React.FC<UserProfileProps> = ({ users, absences = [], roles =
                   }
                   return null;
                 })()}
+                {/* Horário de Trabalho Diário (Entrada, Saída e Almoço) */}
+                <div className="col-span-1 md:col-span-2 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <Clock size={15} className="text-brand-600" />
+                    Horário de Trabalho Diário (Horas Padrão)
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <InputField
+                      label="Entrada"
+                      name="workStartTime"
+                      type="time"
+                      formData={formData}
+                      handleChange={handleChange}
+                      errors={errors}
+                    />
+                    <InputField
+                      label="Saída"
+                      name="workEndTime"
+                      type="time"
+                      formData={formData}
+                      handleChange={handleChange}
+                      errors={errors}
+                    />
+                    <InputField
+                      label="Início Almoço"
+                      name="lunchStartTime"
+                      type="time"
+                      formData={formData}
+                      handleChange={handleChange}
+                      errors={errors}
+                    />
+                    <InputField
+                      label="Fim Almoço"
+                      name="lunchEndTime"
+                      type="time"
+                      formData={formData}
+                      handleChange={handleChange}
+                      errors={errors}
+                    />
+                  </div>
+                </div>
+
                 <div className="col-span-2">
                   <label className="text-xs font-semibold text-gray-500 uppercase">Bio</label>
                   <textarea name="bio" value={formData.bio} onChange={handleChange} className="w-full px-3 py-2 border rounded-lg text-sm mt-1" rows={3} />
@@ -1255,7 +1362,10 @@ const UserProfile: React.FC<UserProfileProps> = ({ users, absences = [], roles =
                     type="number"
                     icon={Calendar}
                     formData={formData}
-                    handleChange={(e: any) => setFormData(prev => ({ ...prev, vacationDaysYearly: parseInt(e.target.value) || 0 }))}
+                    handleChange={(e: any) => {
+                      const val = e.target.value === '' ? '' : parseInt(e.target.value);
+                      setFormData(prev => ({ ...prev, vacationDaysYearly: isNaN(val as number) ? 0 : (val as number) }));
+                    }}
                     errors={errors}
                     placeholder="22"
                   />
@@ -1265,7 +1375,10 @@ const UserProfile: React.FC<UserProfileProps> = ({ users, absences = [], roles =
                     type="number"
                     icon={ChevronRight}
                     formData={formData}
-                    handleChange={(e: any) => setFormData(prev => ({ ...prev, vacationDaysCarryover: parseInt(e.target.value) || 0 }))}
+                    handleChange={(e: any) => {
+                      const val = e.target.value === '' ? '' : parseInt(e.target.value);
+                      setFormData(prev => ({ ...prev, vacationDaysCarryover: isNaN(val as number) ? 0 : (val as number) }));
+                    }}
                     errors={errors}
                     placeholder="0"
                   />
@@ -1275,7 +1388,10 @@ const UserProfile: React.FC<UserProfileProps> = ({ users, absences = [], roles =
                     type="number"
                     icon={PenTool}
                     formData={formData}
-                    handleChange={(e: any) => setFormData(prev => ({ ...prev, vacationAdjustments: parseInt(e.target.value) || 0 }))}
+                    handleChange={(e: any) => {
+                      const val = e.target.value === '' ? '' : parseInt(e.target.value);
+                      setFormData(prev => ({ ...prev, vacationAdjustments: isNaN(val as number) ? 0 : (val as number) }));
+                    }}
                     errors={errors}
                     placeholder="0"
                   />

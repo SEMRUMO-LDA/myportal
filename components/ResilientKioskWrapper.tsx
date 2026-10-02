@@ -37,8 +37,8 @@ interface ResilientKioskWrapperProps {
   emitNotification?: any;
   emitNotificationBulk?: any;
   children: (handlers: {
-    handleClockIn: (user: User) => Promise<void>;
-    handleClockOut: (user: User) => Promise<void>;
+    handleClockIn: (user: User) => Promise<boolean>;
+    handleClockOut: (user: User) => Promise<boolean>;
   }) => React.ReactNode;
 }
 
@@ -49,8 +49,8 @@ export const ResilientKioskWrapper: React.FC<ResilientKioskWrapperProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
 
   // --- CLOCK IN LOGIC EXTRACTED FROM APP.TSX ---
-  const handleClockIn = async (userEntry: User): Promise<void> => {
-    if (isProcessing) return;
+  const handleClockIn = async (userEntry: User): Promise<boolean> => {
+    if (isProcessing) return false;
     setIsProcessing(true);
 
     try {
@@ -69,7 +69,7 @@ export const ResilientKioskWrapper: React.FC<ResilientKioskWrapperProps> = ({
         }
       } else {
         addToast('error', 'Erro critico: Não foi possível validar o seu identificador de utilizador.');
-        return;
+        return false;
       }
 
 
@@ -85,13 +85,13 @@ export const ResilientKioskWrapper: React.FC<ResilientKioskWrapperProps> = ({
 
       if (user.attendanceConfig?.blockEntry) {
         addToast('error', 'A sua picagem encontra-se bloqueada. Contacte a administração.');
-        return;
+        return false;
       }
 
       const now = new Date();
       if (lockedMonths?.some((lock: any) => lock.year === now.getFullYear() && lock.month === now.getMonth() + 1 && lock.isLocked)) {
         addToast('error', 'O mês atual está fechado. Contacte o administrador.');
-        return;
+        return false;
       }
 
       // Check Stale/Forgotten Exits
@@ -104,7 +104,7 @@ export const ResilientKioskWrapper: React.FC<ResilientKioskWrapperProps> = ({
 
         if (hoursElapsed < 16) {
           addToast('warning', `Já tem um turno em curso desde as ${existingLog.checkIn}. Registe a saída primeiro.`);
-          return;
+          return false;
         }
 
         try {
@@ -130,7 +130,7 @@ export const ResilientKioskWrapper: React.FC<ResilientKioskWrapperProps> = ({
           addToast('warning', `Turno de ontem fechado automaticamente.`);
         } catch (err) {
           addToast('error', `Falha ao fechar turno pendente. Contacte admin.`);
-          return;
+          return false;
         }
       }
 
@@ -179,7 +179,7 @@ export const ResilientKioskWrapper: React.FC<ResilientKioskWrapperProps> = ({
           isFallbackAuthorized = true;
         } else {
           addToast('error', 'Falta partilhar geo-localização para validar a picagem (Restrição Ativa).');
-          return;
+          return false;
         }
       }
 
@@ -228,7 +228,7 @@ export const ResilientKioskWrapper: React.FC<ResilientKioskWrapperProps> = ({
 
           if (denyReason) {
             addToast('error', `Acesso Negado: ${denyReason}`);
-            return;
+            return false;
           }
         }
       }
@@ -273,9 +273,14 @@ export const ResilientKioskWrapper: React.FC<ResilientKioskWrapperProps> = ({
             }
           }
         }
+
+        return true;
       } else if (!result.success) {
         addToast('error', `❌ ${result.message}`);
+        return false;
       }
+
+      return false;
 
     } finally {
       setIsProcessing(false);
@@ -284,8 +289,8 @@ export const ResilientKioskWrapper: React.FC<ResilientKioskWrapperProps> = ({
 
 
   // --- CLOCK OUT LOGIC EXTRACTED FROM APP.TSX ---
-  const handleClockOut = async (userEntry: User): Promise<void> => {
-    if (isProcessing) return;
+  const handleClockOut = async (userEntry: User): Promise<boolean> => {
+    if (isProcessing) return false;
     setIsProcessing(true);
 
     try {
@@ -299,7 +304,7 @@ export const ResilientKioskWrapper: React.FC<ResilientKioskWrapperProps> = ({
         user.id = numericId;
       } else {
         addToast('error', 'Erro critico: Não foi possível validar o seu identificador de utilizador.');
-        return;
+        return false;
       }
 
        const now = new Date();
@@ -355,7 +360,7 @@ export const ResilientKioskWrapper: React.FC<ResilientKioskWrapperProps> = ({
            isFallbackAuthorized = true;
          } else {
            addToast('error', `Falha Geo (Saída): Restrição Ativa. GPS: falhou`);
-           return;
+           return false;
          }
        }
 
@@ -400,7 +405,7 @@ export const ResilientKioskWrapper: React.FC<ResilientKioskWrapperProps> = ({
 
             if (denyReason) {
               addToast('error', `Acesso Negado à Saída: ${denyReason}`);
-              return;
+              return false;
             }
          }
        }
@@ -421,11 +426,13 @@ export const ResilientKioskWrapper: React.FC<ResilientKioskWrapperProps> = ({
            setTimeLogs((prev: any) => prev.map((l: any) => l.id === result.log?.id ? { ...l, ...result.log } : l));
          }
 
-         // HOURLY BANK CHECKS (Deficit / Surplus / Early Exit)
-         // Calculate hours worked directly using moment/Date logic if needed
+         return true;
        } else if (!result.success) {
          addToast('error', `❌ ${result.message}`);
+         return false;
        }
+
+       return false;
 
      } finally {
        setIsProcessing(false);

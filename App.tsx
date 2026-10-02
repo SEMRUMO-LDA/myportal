@@ -392,13 +392,20 @@ function App() {
         } else {
           const usersRes = await supabase
             .from('users')
-            .select('id, name, role, email, status, company, department, work_start_time, work_end_time, photo_url, attendance_config')
-            .eq('status', 'ACTIVE')
+            .select(`
+              id, name, role, email, status, company, department, photo_url,
+              phone, mobile_phone, whatsapp_enabled, nif, cc, niss, nationality, marital_status,
+              address, birth_date, admission_date, emergency_contact, bio, iban,
+              work_start_time, work_end_time, lunch_start_time, lunch_end_time,
+              vacation_days_yearly, vacation_days_carryover, vacation_adjustments,
+              attendance_config, onboarding_tasks, documents,
+              location_id, location_ids, schedule_template_id, schedule_cycle_start_date,
+              requires_new_pin, must_change_password, created_at, updated_at
+            `)
             .order('id', { ascending: true });
 
           if (usersRes.data && usersRes.data.length > 0) {
             const freshMappedUsers: User[] = usersRes.data.map((u: any) => ({
-              // Essential fields (loaded from DB)
               id: u.id,
               name: u.name || '',
               role: u.role || '',
@@ -410,35 +417,34 @@ function App() {
               attendanceConfig: u.attendance_config || DEFAULT_ATTENDANCE_CONFIG,
               workStartTime: u.work_start_time || '09:00',
               workEndTime: u.work_end_time || '18:00',
+              lunchStartTime: u.lunch_start_time || '13:00',
+              lunchEndTime: u.lunch_end_time || '14:00',
               pin: undefined,
-              requiresNewPin: false, 
-
-              // Default values for non-essential fields (optimized for fast load)
+              requiresNewPin: !!(u.requires_new_pin || u.must_change_password),
               created_at: u.created_at || new Date().toISOString(),
-              iban: '',
-              nif: '',
-              cc: '',
-              address: '',
-              birthDate: '',
-              admissionDate: new Date().toISOString().split('T')[0],
-              phone: '',
-              emergencyContact: undefined,
-              bio: undefined,
-              onboardingTasks: DEFAULT_ONBOARDING_TASKS,
-              documents: [],
-              lunchStartTime: '13:00',
-              lunchEndTime: '14:00',
-              vacationDaysYearly: 0,
-              vacationDaysCarryover: 0,
-              vacationAdjustments: 0,
-              niss: '',
-              nationality: '',
-              maritalStatus: undefined,
-              mobilePhone: '',
-              whatsappEnabled: false,
-              locationId: undefined,
-              locationIds: [],
-              scheduleCycleStartDate: undefined
+              iban: u.iban || '',
+              nif: u.nif || '',
+              cc: u.cc || '',
+              address: u.address || '',
+              birthDate: u.birth_date || '',
+              admissionDate: u.admission_date || new Date().toISOString().split('T')[0],
+              phone: u.phone || '',
+              emergencyContact: u.emergency_contact || '',
+              bio: u.bio || '',
+              onboardingTasks: u.onboarding_tasks || DEFAULT_ONBOARDING_TASKS,
+              documents: u.documents || [],
+              vacationDaysYearly: u.vacation_days_yearly ?? 22,
+              vacationDaysCarryover: u.vacation_days_carryover ?? 0,
+              vacationAdjustments: u.vacation_adjustments ?? 0,
+              niss: u.niss || '',
+              nationality: u.nationality || '',
+              maritalStatus: u.marital_status || '',
+              mobilePhone: u.mobile_phone || '',
+              whatsappEnabled: u.whatsapp_enabled ?? false,
+              locationId: u.location_id || undefined,
+              locationIds: u.location_ids || (u.location_id ? [u.location_id] : []),
+              scheduleTemplateId: u.schedule_template_id || undefined,
+              scheduleCycleStartDate: u.schedule_cycle_start_date || undefined
             }));
             currentUsersList = freshMappedUsers;
             setUsers(freshMappedUsers);
@@ -1474,9 +1480,9 @@ function App() {
     let payload = { ...updatePayload };
     let error: any = null;
     for (let attempt = 0; attempt < 10; attempt++) {
-      const result = await supabase.from('users').update(payload).eq('id', updatedUser.id);
+      const result = await supabase.from('users').update(payload).eq('id', updatedUser.id).select();
       if (result.error && result.error.message?.includes('in the schema cache')) {
-        const match = result.error.message.match(/(\w+)/);
+        const match = result.error.message.match(/'([^']+)'/);
         if (match) {
           console.warn(`[handleUpdateUser] Column '${match[1]}' not in DB, stripping and retrying...`);
           delete payload[match[1]];
@@ -1491,9 +1497,12 @@ function App() {
       console.error("Error updating user:", error);
       addToast('error', `Erro ao gravar: ${error.message || 'Dados inválidos'}`);
     } else {
-      setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+      setUsers(prev => prev.map(u => u.id === updatedUser.id ? { ...u, ...updatedUser } : u));
+      if (currentUser?.id === updatedUser.id) {
+        setCurrentUser(prev => prev ? { ...prev, ...updatedUser } : null);
+      }
       if (!options?.silent) {
-        addToast('success', 'Dados do colaborador atualizados com sucesso.');
+        addToast('success', 'Dados do colaborador guardados com sucesso!');
       }
     }
   };
@@ -2489,9 +2498,16 @@ function App() {
     setTimeLogs(prev => [newLog, ...prev]);
     addToast(status === TimeLogStatus.LATE ? 'warning' : 'success',
       status === TimeLogStatus.LATE
-        ? `Entrada registada com atraso (${anomalyMinutes}min).`
-        : `Bem-vindo, ${user.name.split(' ')[0]}. Entrada: ${timeStr}`
+        ? `Entrada registada com atraso (${anomalyMinutes}min). A fechar sessão...`
+        : `Bem-vindo, ${user.name.split(' ')[0]}. Entrada registada às ${timeStr}. A fechar sessão...`
     );
+
+    // AUTO-LOGOUT após entrada com sucesso para o colaborador
+    setTimeout(async () => {
+      await authService.logout();
+      window.location.href = '#/login';
+      window.location.reload();
+    }, 2500);
   };
 
   const handleBreakStart = async (user: User) => {
@@ -3774,9 +3790,13 @@ function App() {
         {showShiftPulseModal && shiftPulseUser && (
           <ShiftPulseModal
             isOpen={showShiftPulseModal}
-            onClose={() => {
+            onClose={async () => {
               setShowShiftPulseModal(false);
               setShiftPulseUser(null);
+              // AUTO-LOGOUT após saída com sucesso para o colaborador
+              await authService.logout();
+              window.location.href = '#/login';
+              window.location.reload();
             }}
             user={shiftPulseUser}
           />

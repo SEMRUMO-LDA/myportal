@@ -19,13 +19,14 @@ import { checkAndCloseOpenSessions, isAnomalyCheckout } from '../utils/sessionCh
 import TodayCompanyDashboard from '../components/TodayCompany/TodayCompanyDashboard';
 import FleetWidget from '../components/TodayCompany/FleetWidget';
 import { useIdleTimeout } from '../hooks/useIdleTimeout';
+import { authService } from '../services/authService';
 
 interface KioskDashboardProps {
     user: User;
-    onClockIn: (user: User) => void;
+    onClockIn: (user: User) => Promise<boolean> | Promise<void> | void;
     onBreakStart?: (user: User) => void;
     onBreakEnd?: (user: User) => void;
-    onClockOut: (user: User) => void;
+    onClockOut: (user: User) => Promise<boolean> | Promise<void> | void;
     onLogout: () => void;
     lastLog?: TimeLog;
     events?: AppEvent[];
@@ -44,6 +45,7 @@ const KioskDashboard: React.FC<KioskDashboardProps> = ({ user, onClockIn, onBrea
     const { addToast } = useToast();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [autoLogoutState, setAutoLogoutState] = useState<{ active: boolean; type: 'in' | 'out'; message: string } | null>(null);
     // Vehicle/Trip state
     const [vehicle, setVehicle] = useState<Vehicle | null>(null);
     const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
@@ -1086,14 +1088,30 @@ const KioskDashboard: React.FC<KioskDashboardProps> = ({ user, onClockIn, onBrea
                                 <ClockButton
                                     type="in"
                                     onPress={async () => {
-                                        if (isSubmitting) return;
+                                        if (isSubmitting || autoLogoutState?.active) return;
                                         setIsSubmitting(true);
                                         try {
-                                            await onClockIn(user);
+                                            const success = await onClockIn(user);
                                             // Brief delay for visual feedback
                                             await new Promise(resolve => setTimeout(resolve, 500));
-                                            // CORREÇÃO: NÃO fazer logout - utilizador fica no portal
-                                            // Toast removed to avoid duplication with ResilientKioskWrapper
+                                            
+                                            if (success !== false) {
+                                                setAutoLogoutState({
+                                                    active: true,
+                                                    type: 'in',
+                                                    message: 'Entrada registada com sucesso! A terminar sessão...'
+                                                });
+                                                setTimeout(async () => {
+                                                    try {
+                                                        if (onLogout) await onLogout();
+                                                    } catch (err) {
+                                                        console.warn('onLogout error:', err);
+                                                    }
+                                                    await authService.logout();
+                                                    window.location.hash = '/login';
+                                                    window.location.reload();
+                                                }, 2500);
+                                            }
                                         } catch (e) {
                                             console.error('[Kiosk] Clock-in error:', e);
                                             addToast('error', 'Erro ao registar entrada. Tente novamente.');
@@ -1101,22 +1119,38 @@ const KioskDashboard: React.FC<KioskDashboardProps> = ({ user, onClockIn, onBrea
                                             setIsSubmitting(false);
                                         }
                                     }}
-                                    disabled={isSubmitting || sessionCheckLoading || !dataReady}
-                                    isLoading={isSubmitting || sessionCheckLoading || !dataReady}
+                                    disabled={isSubmitting || sessionCheckLoading || !dataReady || !!autoLogoutState?.active}
+                                    isLoading={isSubmitting || sessionCheckLoading || !dataReady || !!autoLogoutState?.active}
                                 />
                             ) : (
                                 // SAÍDA - Novo ClockButton otimizado
                                 <ClockButton
                                     type="out"
                                     onPress={async () => {
-                                        if (isSubmitting) return;
+                                        if (isSubmitting || autoLogoutState?.active) return;
                                         setIsSubmitting(true);
                                         try {
-                                            await onClockOut(user);
+                                            const success = await onClockOut(user);
                                             // Brief delay for visual feedback
                                             await new Promise(resolve => setTimeout(resolve, 500));
-                                            // CORREÇÃO: NÃO fazer logout - utilizador fica no portal
-                                            addToast('success', 'Saída registada com sucesso!');
+
+                                            if (success !== false) {
+                                                setAutoLogoutState({
+                                                    active: true,
+                                                    type: 'out',
+                                                    message: 'Saída registada com sucesso! A terminar sessão...'
+                                                });
+                                                setTimeout(async () => {
+                                                    try {
+                                                        if (onLogout) await onLogout();
+                                                    } catch (err) {
+                                                        console.warn('onLogout error:', err);
+                                                    }
+                                                    await authService.logout();
+                                                    window.location.hash = '/login';
+                                                    window.location.reload();
+                                                }, 2500);
+                                            }
                                         } catch (e) {
                                             console.error('[Kiosk] Clock-out error:', e);
                                             addToast('error', 'Erro ao registar saída. Tente novamente.');
@@ -1124,8 +1158,8 @@ const KioskDashboard: React.FC<KioskDashboardProps> = ({ user, onClockIn, onBrea
                                             setIsSubmitting(false);
                                         }
                                     }}
-                                    disabled={isSubmitting || sessionCheckLoading || !dataReady}
-                                    isLoading={isSubmitting || sessionCheckLoading || !dataReady}
+                                    disabled={isSubmitting || sessionCheckLoading || !dataReady || !!autoLogoutState?.active}
+                                    isLoading={isSubmitting || sessionCheckLoading || !dataReady || !!autoLogoutState?.active}
                                 />
                             )}
                         </div>
@@ -1481,6 +1515,28 @@ const KioskDashboard: React.FC<KioskDashboardProps> = ({ user, onClockIn, onBrea
                             <CollaboratorCard user={user} className="hover:scale-100 shadow-none border border-white/5" />
                             <div className="mt-8 text-center">
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Auto-logout feedback overlay */}
+            {autoLogoutState?.active && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+                    <div className="bg-[#0f1f38] border border-blue-500/30 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl flex flex-col items-center gap-4 animate-in zoom-in-95 duration-200">
+                        <div className={`w-16 h-16 rounded-full flex items-center justify-center ${autoLogoutState.type === 'in' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'bg-blue-500/20 text-blue-400 border border-blue-500/40 shadow-lg shadow-blue-500/10'}`}>
+                            <CheckCircle2 size={36} />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-white mb-1">
+                                {autoLogoutState.type === 'in' ? 'Entrada Registada!' : 'Saída Registada!'}
+                            </h3>
+                            <p className="text-sm text-slate-300">
+                                {autoLogoutState.message}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-400 mt-2">
+                            <Loader2 size={16} className="animate-spin text-blue-400" />
+                            <span>A terminar sessão automaticamente...</span>
                         </div>
                     </div>
                 </div>
