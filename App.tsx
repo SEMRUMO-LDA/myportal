@@ -4051,7 +4051,7 @@ const AppRoutes = ({ users, loading, dataReady, absences, timeLogs, setTimeLogs,
             <Route path="fleet" element={<FleetManagement users={users} />} />
             <Route path="trip-history" element={<TripHistory users={users} />} />
             <Route path="fleet/monthly-report" element={<MonthlyTripReport />} />
-            <Route path="messages" element={<Messages users={users} messages={messages} onSendMessage={onSendMessage} onMarkRead={onMarkMessageRead} />} />
+            <Route path="messages" element={<Messages currentUser={currentUser} users={users} messages={messages} onSendMessage={onSendMessage} onMarkRead={onMarkMessageRead} />} />
             <Route path="settings" element={<Settings />} />
             <Route path="settings/lock-month" element={<LockMonth lockedMonths={lockedMonths} onAddLock={onAddLock} onDeleteLock={onDeleteLock} />} />
             <Route path="settings/roles" element={<RolesManagement roles={jobRoles} onAddRole={onAddRole} onDeleteRole={onDeleteRole} />} />
