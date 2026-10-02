@@ -732,7 +732,7 @@ const KioskDashboard: React.FC<KioskDashboardProps> = ({ user, onClockIn, onBrea
                                         className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-lg transition-colors duration-50 group"
                                     >
                                         <TreePalm size={18} className="text-blue-300 group-hover:text-white" />
-                                        <span className="text-sm font-medium">Férias</span>
+                                        <span className="text-sm font-medium">Férias & Ausências</span>
                                     </button>
 
                                     <button

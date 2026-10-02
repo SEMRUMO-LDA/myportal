@@ -4159,11 +4159,11 @@ const AppRoutes = ({ users, loading, dataReady, absences, timeLogs, setTimeLogs,
               <Route path="attendance" element={<EmployeeAttendance user={currentUser!} logs={timeLogs} leaves={leaves} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} />} />
               <Route path="time-bank" element={<EmployeeTimeBank user={currentUser!} logs={timeLogs} adjustments={hourBankAdjustments} />} />
               <Route path="expenses" element={<MyExpenses user={currentUser!} expenses={expenses} onAddExpense={onAddExpense} />} />
-              <Route path="vacations" element={<EmployeeVacations user={currentUser!} leaves={leaves} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} />} />
+              <Route path="vacations" element={<EmployeeVacations user={currentUser!} users={users} leaves={leaves} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} onAddLeave={onAddLeave} defaultTab="overview" />} />
               <Route path="fleet-booking" element={<FleetBooking user={currentUser!} />} />
               <Route path="vehicle" element={<MyVehicle user={currentUser!} />} />
               <Route path="messages" element={<Messages currentUser={currentUser!} users={users} messages={messages} onSendMessage={onSendMessage} onMarkRead={onMarkMessageRead} />} />
-              <Route path="request-leave" element={<RequestLeave user={currentUser!} users={users} leaveTypes={leaveTypes} leaves={leaves} scheduleTemplates={scheduleTemplates} onAddLeave={onAddLeave} kioskMode={true} />} />
+              <Route path="request-leave" element={<EmployeeVacations user={currentUser!} users={users} leaveTypes={leaveTypes} leaves={leaves} scheduleTemplates={scheduleTemplates} onAddLeave={onAddLeave} defaultTab="request" />} />
               <Route path="team-calendar" element={<TeamCalendar currentUser={currentUser!} users={users} leaves={leaves} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} locations={locations} departments={departments} onAddLeave={onAddLeave} onUpdateLeave={onUpdateLeave} kioskMode={false} />} />
               <Route path="team-status" element={<TeamStatus users={users} logs={timeLogs} />} />
               <Route path="feedback" element={<EmployeeFeedback user={currentUser!} />} />

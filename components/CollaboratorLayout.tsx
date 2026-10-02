@@ -64,7 +64,7 @@ const CollaboratorLayout: React.FC<CollaboratorLayoutProps> = ({ user, onLogout,
                     <NavItem to="/portal/profile" icon={UserCircle} label="Meu Perfil" />
                     <NavItem to="/portal/attendance" icon={Fingerprint} label="Calendário Pessoal" />
                     <NavItem to="/portal/time-bank" icon={Clock} label="Banco de Horas" />
-                    <NavItem to="/portal/request-leave" icon={TreePalm} label="Férias / Ausências" />
+                    <NavItem to="/portal/vacations" icon={TreePalm} label="Férias & Ausências" />
                     <NavItem to="/portal/expenses" icon={ReceiptEuro} label="Minhas Despesas" />
                     <NavItem to="/portal/team-status" icon={Users} label="Estado da Equipa" />
 
