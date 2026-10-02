@@ -200,17 +200,18 @@ export const calculateVacationBalance = (
     const adjustments = user.vacationAdjustments ?? 0;
     const total = annual + carryover + adjustments;
 
-    // Get leave types that deduct vacation
+    // Get leave types that deduct vacation (or match name containing 'férias')
     const vacationLeaveTypeIds = leaveTypes
-        .filter(lt => lt.deductsVacation)
+        .filter(lt => lt.deductsVacation || lt.name?.toLowerCase().includes('férias'))
         .map(lt => lt.id);
 
-    // Filter user's approved leaves that deduct vacation
-    const userVacationLeaves = leaves.filter(l =>
-        l.userId === userId &&
-        l.status === 'APPROVED' &&
-        vacationLeaveTypeIds.includes(l.leaveTypeId)
-    );
+    // Filter user's approved leaves that deduct vacation (robust against string vs number ID and status casing)
+    const userVacationLeaves = leaves.filter(l => {
+        const matchesUser = Number(l.userId) === Number(userId);
+        const isApproved = l.status === 'APPROVED' || l.status?.toLowerCase() === 'approved';
+        const matchesType = vacationLeaveTypeIds.includes(l.leaveTypeId) || (l as any).leaveType?.toLowerCase().includes('férias');
+        return matchesUser && isApproved && matchesType;
+    });
 
     // Calculate used (past) and planned (future) days
     let used = 0;
@@ -220,15 +221,18 @@ export const calculateVacationBalance = (
     const userTemplate = scheduleTemplates.find(t => t.id === user.scheduleTemplateId);
 
     userVacationLeaves.forEach(leave => {
-        const startDate = new Date(leave.startDate);
-        const endDate = new Date(leave.endDate);
+        if (!leave.startDate || !leave.endDate) return;
+
+        // Use parseLocalDate to avoid UTC midnight shifts
+        const startDate = parseLocalDate(leave.startDate);
+        const endDate = parseLocalDate(leave.endDate);
 
         // Only count days in current year
         const effectiveStart = startDate.getFullYear() < currentYear
-            ? new Date(currentYear, 0, 1)
+            ? new Date(currentYear, 0, 1, 0, 0, 0, 0)
             : startDate;
         const effectiveEnd = endDate.getFullYear() > currentYear
-            ? new Date(currentYear, 11, 31)
+            ? new Date(currentYear, 11, 31, 0, 0, 0, 0)
             : endDate;
 
         if (effectiveEnd < effectiveStart) return;

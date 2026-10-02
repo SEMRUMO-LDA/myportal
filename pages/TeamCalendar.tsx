@@ -4,6 +4,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, X, Save, Users, MapPin, Buildi
 import { getEffectiveScheduleDay } from '../utils/scheduleUtils';
 import QuorumAnalyzer from '../components/QuorumAnalyzer';
 import Header from '../components/Header';
+import { calculateVacationBalance } from '../components/VacationBalanceCard';
 import { User, Leave, LeaveType, ScheduleTemplate, Location, Department, UserStatus, AbsenceStatus, Holiday } from '../types';
 import { checkIsHoliday } from '../utils/holidayUtils';
 import { supabase } from '../services/supabaseClient';
@@ -204,22 +205,9 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ users, leaves, leaveTypes, 
         }
     };
 
-    // Calculate vacation balance for a user
-    const getVacationDaysUsed = (userId: number): number => {
-        const currentYear = new Date().getFullYear();
-        return leaves
-            .filter(l => Number(l.userId) === Number(userId) && l.status === AbsenceStatus.APPROVED)
-            .filter(l => {
-                const lt = leaveTypes.find(t => t.id === l.leaveTypeId);
-                return lt?.deductsVacation;
-            })
-            .reduce((sum, l) => {
-                const start = new Date(l.startDate);
-                const end = new Date(l.endDate);
-                if (start.getFullYear() !== currentYear) return sum;
-                const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                return sum + days;
-            }, 0);
+    // Calculate vacation balance for a user using unified calculateVacationBalance
+    const getVacationBalanceForUser = (userObj: User) => {
+        return calculateVacationBalance(userObj, leaves, userObj.id, leaveTypes, scheduleTemplates, 3, 31, holidays);
     };
 
     return (
@@ -675,7 +663,7 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ users, leaves, leaveTypes, 
                             <div className="text-sm p-3 bg-blue-50 rounded-lg">
                                 <span className="text-blue-600">Saldo de Férias:</span>
                                 <p className="font-bold text-blue-800">
-                                    {(selectedUser.vacationDaysYearly || 22) - getVacationDaysUsed(selectedUser.id)} dias restantes de {selectedUser.vacationDaysYearly || 22}
+                                    {getVacationBalanceForUser(selectedUser).remaining} dias restantes de {getVacationBalanceForUser(selectedUser).total}
                                 </p>
                             </div>
 
