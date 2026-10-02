@@ -51,6 +51,17 @@ class AuthService {
           console.log('[AuthService] Successfully created synthetic Auth account on the fly!');
           authData = signUpData;
           authError = null;
+          
+          // Link the new Auth ID to the user profile
+          try {
+            const numericId = parseInt(credentials.email.replace('user', '').replace('@myportal.internal', ''));
+            if (!isNaN(numericId) && numericId > 0) {
+              await supabase.from('users').update({ auth_id: signUpData.user.id }).eq('id', numericId);
+              console.log('[AuthService] Successfully linked new Auth ID to user profile');
+            }
+          } catch (e) {
+            console.error('[AuthService] Failed to link auth_id:', e);
+          }
         }
       }
 

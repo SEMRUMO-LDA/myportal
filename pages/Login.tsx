@@ -375,7 +375,7 @@ const Login: React.FC<LoginProps> = () => {
           }
         }
 
-        const email = data.email || `user${userId}@myportal.internal`;
+        const email = `user${userId}@myportal.internal`;
         setCachedEmployee({ id: userId, email, role: data.role, requires_new_pin: !!data.requires_new_pin });
         setUserEmail(email);
         setRequiresNewPin(data.requires_new_pin);
