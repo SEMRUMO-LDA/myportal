@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ShieldCheck, UserCircle, ArrowRight, Loader2, Delete, ChevronLeft, Clock, LogIn, CheckCircle, WifiOff, Wifi, AlertTriangle, Building2, KeyRound, Info } from 'lucide-react';
+import { ShieldCheck, UserCircle, ArrowRight, Loader2, Delete, ChevronLeft, Clock, LogIn, CheckCircle, WifiOff, Wifi, AlertTriangle, Building2, KeyRound, Info, Sparkles, CheckCircle2 } from 'lucide-react';
 import { User as UserType, Company } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -97,6 +97,8 @@ const Login: React.FC<LoginProps> = () => {
 
   const isSubmittingRef = useRef(false);
   const prefetchedKioskActionRef = useRef<'in' | 'out' | null>(null);
+  const kioskUserIdRef = useRef<number | null>(null);
+  const [pulseSubmitted, setPulseSubmitted] = useState(false);
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginType, setLoginType] = useState<'colaborador' | 'administrador'>('colaborador');
@@ -171,6 +173,7 @@ const Login: React.FC<LoginProps> = () => {
 
   useEffect(() => {
     if (showKioskSuccess) {
+      const duration = kioskAction === 'out' ? 5500 : 3500;
       const timeout = setTimeout(() => {
         setShowKioskSuccess(false);
         setStep('id');
@@ -178,10 +181,38 @@ const Login: React.FC<LoginProps> = () => {
         setPin('');
         setIsLoggingIn(false); // CRITICAL: Release the loader lock for the next user!
         isSubmittingRef.current = false; // FREE THE LOCK!
-      }, 4000);
+        setPulseSubmitted(false);
+      }, duration);
       return () => clearTimeout(timeout);
     }
-  }, [showKioskSuccess]);
+  }, [showKioskSuccess, kioskAction]);
+
+  const handleShiftPulse = async (rating: number) => {
+    setPulseSubmitted(true);
+    try {
+      const uid = kioskUserIdRef.current || currentUserId;
+      if (uid) {
+        const today = new Date().toISOString().split('T')[0];
+        await supabase.from('survey_responses').insert({
+          user_id: uid,
+          survey_type: 'WEEKLY_PULSE',
+          reference_date: today,
+          rating: rating
+        });
+      }
+    } catch (e) {
+      console.warn('[KioskShiftPulse] Error:', e);
+    }
+    setTimeout(() => {
+      setShowKioskSuccess(false);
+      setStep('id');
+      setAccessCode('');
+      setPin('');
+      setIsLoggingIn(false);
+      isSubmittingRef.current = false;
+      setPulseSubmitted(false);
+    }, 1200);
+  };
 
   const handleNumpadClick = (value: string | number) => {
     setEmployeeError('');
@@ -236,6 +267,7 @@ const Login: React.FC<LoginProps> = () => {
         actionToPerform = lastLogs && lastLogs.length > 0 ? 'out' : 'in';
       }
 
+      kioskUserIdRef.current = userData.id;
       let result;
       if (actionToPerform === 'in') {
         result = await kioskClockService.clockIn(userData);
@@ -320,7 +352,7 @@ const Login: React.FC<LoginProps> = () => {
 
         // === CACHE LEVEL 1: Check instant client cache (0ms) ===
         const cachedEmp = getCachedEmployee(userId);
-        if (cachedEmp) {
+        if (cachedEmp && !cachedEmp.email?.includes('myportal.internal')) {
           if (loginType === 'administrador') {
             const isAdmin = ['ADMIN', 'Administrador', 'RH', 'Diretor de Unidade', 'Responsável de Departamento'].includes(cachedEmp.role);
             if (!isAdmin) {
@@ -350,7 +382,7 @@ const Login: React.FC<LoginProps> = () => {
 
         const { data, error } = await supabase
           .from('users')
-          .select('id, email, role, requires_new_pin, status')
+          .select('id, name, email, role, requires_new_pin, must_change_password, status')
           .eq('id', userId)
           .eq('status', 'ACTIVE')
           .single();
@@ -375,19 +407,15 @@ const Login: React.FC<LoginProps> = () => {
           }
         }
 
-        let emailToUse = `user${userId}@myportal.internal`;
-        const role = (data.role || '').toUpperCase();
-        const isAdmin = ['ADMIN', 'ADMINISTRADOR', 'RH', 'DIRETOR DE UNIDADE', 'RESPONSÁVEL DE DEPARTAMENTO'].includes(role);
-        
-        if (isAdmin && data.email) {
-          emailToUse = data.email;
-        }
+        // Email robusto: perfil prioritário ou identidade padrão do sistema
+        const email = data.email?.trim() || `user${userId}@semrumo.eu`;
+        const hasRequiresNewPin = !!(data.requires_new_pin || data.must_change_password);
 
-        const email = emailToUse;
-        setCachedEmployee({ id: userId, email, role: data.role, requires_new_pin: !!data.requires_new_pin });
+        setCachedEmployee({ id: userId, email, role: data.role, requires_new_pin: hasRequiresNewPin });
         setUserEmail(email);
-        setRequiresNewPin(data.requires_new_pin);
+        setRequiresNewPin(hasRequiresNewPin);
         setCurrentUserId(userId);
+        if (data.name) setCurrentUserName(data.name);
         if (isKioskMode) {
            geolocationService.warmUp();
            prefetchKioskAction(userId);
@@ -442,8 +470,8 @@ const Login: React.FC<LoginProps> = () => {
           return;
         }
 
-        // === PRODUCTION: Supabase Auth with timeout ===
-        const loginPromise = authService.login({ email: userEmail, password: pin });
+        // === PRODUCTION: Supabase Auth with timeout e fallback inteligente ===
+        const loginPromise = authService.login({ email: userEmail, password: pin }, 0, currentUserId || undefined);
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('timeout')), 10000)
         );
@@ -505,7 +533,7 @@ const Login: React.FC<LoginProps> = () => {
 
             await supabase
               .from('users')
-              .update({ requires_new_pin: false, pin: newPin })
+              .update({ requires_new_pin: false, must_change_password: false, pin: newPin })
               .eq('id', currentUserId);
 
             if (isKioskMode) {
@@ -574,15 +602,54 @@ const Login: React.FC<LoginProps> = () => {
     <div className="min-h-screen w-full bg-[#020a16] bg-gradient-to-br from-[#041d3d] to-[#020a16] flex flex-col items-center justify-center p-4 sm:p-6 overflow-y-auto overflow-x-hidden selection:bg-blue-500/30">
       {/* Kiosk Success Overlay */}
       {showKioskSuccess && (
-        <div className="fixed inset-0 z-50 bg-gradient-to-br from-[#064e3b] to-[#065f46] flex flex-col items-center justify-center animate-in fade-in duration-300">
-          <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-8 shadow-2xl scale-110">
-            <CheckCircle className="text-emerald-600" size={56} />
+        <div className="fixed inset-0 z-50 bg-gradient-to-br from-[#064e3b] to-[#065f46] flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white rounded-full flex items-center justify-center mb-5 sm:mb-6 shadow-2xl scale-105">
+            <CheckCircle className="text-emerald-600" size={52} />
           </div>
-          <h2 className="text-4xl md:text-6xl font-bold text-white mb-4 text-center">
+          <h2 className="text-3xl sm:text-5xl font-bold text-white mb-2 text-center">
             {kioskAction === 'in' ? 'Entrada Registada' : 'Saída Registada'}
           </h2>
-          <p className="text-2xl md:text-3xl text-emerald-200 mb-8">{kioskSuccessUser}</p>
-          <div className="mt-8 flex items-center gap-2 text-white/40 text-sm">
+          <p className="text-xl sm:text-2xl text-emerald-200 mb-6">{kioskSuccessUser}</p>
+
+          {/* Opção B: AI Shift-Pulse na Saída do Quiosque */}
+          {kioskAction === 'out' && (
+            <div className="w-full max-w-md bg-[#0a1628]/85 backdrop-blur-md border border-emerald-400/30 rounded-3xl p-5 mb-5 shadow-2xl text-center animate-in zoom-in-95">
+              <div className="flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-300 mb-1">
+                <Sparkles size={14} />
+                <span>Shift-Pulse • Como correu o teu dia?</span>
+              </div>
+              <p className="text-xs text-slate-300 mb-4">
+                {pulseSubmitted ? '✨ Obrigado pelo teu feedback! Bom descanso.' : '1 toque rápido para sabermos a energia do teu turno:'}
+              </p>
+
+              {!pulseSubmitted ? (
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { rating: 5, emoji: '🚀', label: 'Top' },
+                    { rating: 4, emoji: '😊', label: 'Bom' },
+                    { rating: 3, emoji: '⚡', label: 'Corrido' },
+                    { rating: 2, emoji: '🛑', label: 'Difícil' }
+                  ].map(item => (
+                    <button
+                      key={item.rating}
+                      onClick={() => handleShiftPulse(item.rating)}
+                      className="p-3 bg-white/5 hover:bg-white/15 border border-white/10 rounded-2xl flex flex-col items-center gap-1 transition-all active:scale-95 group hover:border-emerald-400/60"
+                    >
+                      <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{item.emoji}</span>
+                      <span className="text-[11px] font-bold text-white">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-2 text-emerald-300 font-semibold text-sm flex items-center justify-center gap-2">
+                  <CheckCircle2 size={18} />
+                  Registo guardado com sucesso!
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="mt-2 flex items-center gap-2 text-white/50 text-xs sm:text-sm">
             <Loader2 size={16} className="animate-spin" />
             A voltar ao ecrã inicial...
           </div>

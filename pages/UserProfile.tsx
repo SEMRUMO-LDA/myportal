@@ -717,9 +717,10 @@ const UserProfile: React.FC<UserProfileProps> = ({ users, absences = [], roles =
 
                     <div>
                       <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1 mb-1">
-                        Definir Nova Password
+                        Sincronizar Password no Auth
                       </label>
                       <button
+                        type="button"
                         onClick={async () => {
                           if (!formData.pin || formData.pin.length !== 6) {
                             addToast('error', 'O PIN deve ter exatamente 6 dígitos.');
@@ -727,34 +728,36 @@ const UserProfile: React.FC<UserProfileProps> = ({ users, absences = [], roles =
                           }
 
                           if (!formData.authId) {
-                            addToast('error', 'Utilizador não migrado para o sistema de autenticação.');
+                            addToast('error', 'Utilizador não tem ID de autenticação associado.');
                             return;
                           }
  
                           try {
-                            // Import supabaseAdmin
-                            const { supabaseAdmin } = await import('../services/supabaseAdminClient');
+                            const { supabaseAdmin, isAdminClientAvailable } = await import('../services/supabaseAdminClient');
  
-                            // Update password in Supabase Auth
-                            const { error } = await supabaseAdmin.auth.admin.updateUserById(
-                              formData.authId,
-                              { password: formData.pin }
-                            );
- 
-                            if (error) {
-                              addToast('error', `Erro ao atualizar password: ${error.message}`);
-                              return;
+                            if (isAdminClientAvailable()) {
+                              const { error } = await supabaseAdmin.auth.admin.updateUserById(
+                                formData.authId,
+                                { password: formData.pin }
+                              );
+                              if (error) {
+                                addToast('error', `Erro ao atualizar password: ${error.message}`);
+                                return;
+                              }
                             }
  
-                            // Also update requires_new_pin flag
+                            // Sincronizar ambas as colunas na BD para eliminar qualquer duplicidade
                             await supabase
                               .from('users')
                               .update({ 
-                                requires_new_pin: true 
+                                pin: formData.pin,
+                                requires_new_pin: true,
+                                must_change_password: true
                               })
                               .eq('id', formData.id);
 
-                            addToast('success', `✅ Password atualizada para: ${formData.pin}. O colaborador será obrigado a alterá-la no próximo login.`);
+                            setFormData(prev => ({ ...prev, requiresNewPin: true }));
+                            addToast('success', `✅ Password/PIN atualizado para ${formData.pin}. Colaborador terá de alterá-lo no próximo acesso.`);
                           } catch (err: any) {
                             addToast('error', `Erro: ${err.message}`);
                           }
@@ -762,11 +765,31 @@ const UserProfile: React.FC<UserProfileProps> = ({ users, absences = [], roles =
                         className="w-full px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
                       >
                         <Lock size={16} />
-                        Aplicar Password do Campo PIN
+                        Aplicar e Forçar Novo PIN
                       </button>
                       <p className="text-[10px] text-orange-500 mt-1 font-medium">
-                        ⚠️ Aplica o PIN acima como password. Colaborador será obrigado a mudá-la.
+                        Aplica o PIN e define a obrigatoriedade de alteração no próximo login.
                       </p>
+                    </div>
+
+                    {/* Controlo Unificado: Obrigar a Mudar PIN */}
+                    <div className="md:col-span-2 pt-3 border-t border-orange-200/50 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-bold text-gray-700 block">
+                          Obrigar alteração de PIN no próximo login
+                        </span>
+                        <span className="text-[11px] text-gray-500">
+                          Quando ativado, o colaborador terá de definir um novo PIN pessoal no primeiro acesso.
+                        </span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.requiresNewPin || false}
+                          onChange={(e) => setFormData(prev => ({ ...prev, requiresNewPin: e.target.checked }))}
+                          className="w-5 h-5 text-orange-600 rounded border-gray-300 focus:ring-orange-500 cursor-pointer"
+                        />
+                      </label>
                     </div>
                   </div>
                 </div>

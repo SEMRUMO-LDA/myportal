@@ -76,6 +76,7 @@ const DocumentManagement = lazy(() => import('./pages/DocumentManagement'));
 // const NotificationsPage = lazy(() => import('./pages/NotificationsPage')); // Removed notifications
 const EmployeeFeedback = lazy(() => import('./pages/EmployeeFeedback'));
 const FleetBooking = lazy(() => import('./pages/FleetBooking'));
+import { ShiftPulseModal } from './components/ShiftPulseModal';
 
 // Loading Fallback Component
 const PageLoader = () => {
@@ -207,6 +208,8 @@ function App() {
   // Pulse Surveys & Anonymous Feedback
   const [surveyResponses, setSurveyResponses] = useState<any[]>([]);
   const [anonymousFeedbacks, setAnonymousFeedbacks] = useState<any[]>([]);
+  const [showShiftPulseModal, setShowShiftPulseModal] = useState(false);
+  const [shiftPulseUser, setShiftPulseUser] = useState<User | null>(null);
 
   // Automation State
   const [whatsappAutoAlerts, setWhatsappAutoAlerts] = useState(false);
@@ -1456,6 +1459,7 @@ function App() {
       bio: emptyToNull(updatedUser.bio),
       pin: emptyToNull(updatedUser.pin),
       requires_new_pin: updatedUser.requiresNewPin ?? false,
+      must_change_password: updatedUser.requiresNewPin ?? false,
       location_id: updatedUser.locationId || null,
       location_ids: updatedUser.locationIds || [],
       schedule_template_id: updatedUser.scheduleTemplateId || null,
@@ -1529,6 +1533,7 @@ function App() {
       bio: emptyToNull(u.bio),
       pin: emptyToNull(u.pin),
       requires_new_pin: u.requiresNewPin ?? false,
+      must_change_password: u.requiresNewPin ?? false,
       onboarding_tasks: u.onboardingTasks || null,
       documents: u.documents || null,
       location_id: u.locationId || null,
@@ -2983,6 +2988,9 @@ function App() {
         }
       }
 
+      // Opção B: Trigger AI Shift-Pulse modal on clock out
+      setShiftPulseUser(user);
+      setShowShiftPulseModal(true);
 
     } else {
       addToast('error', 'Saída não registada: Não foi encontrado um turno aberto para hoje. Se tem um turno pendente, limpe a cache ou contacte admin.');
@@ -3763,6 +3771,16 @@ function App() {
           onMarkNotificationRead={handleMarkNotificationRead}
           onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
         />
+        {showShiftPulseModal && shiftPulseUser && (
+          <ShiftPulseModal
+            isOpen={showShiftPulseModal}
+            onClose={() => {
+              setShowShiftPulseModal(false);
+              setShiftPulseUser(null);
+            }}
+            user={shiftPulseUser}
+          />
+        )}
         </HashRouter>
       </ErrorBoundary>
     </QueryClientProvider>

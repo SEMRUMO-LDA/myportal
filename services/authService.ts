@@ -24,9 +24,9 @@ export interface UserData {
 class AuthService {
   /**
    * Login com email e password
-   * Includes retry with backoff for transient errors
+   * Includes retry with backoff for transient errors and fallback for changed profile emails
    */
-  async login(credentials: LoginCredentials, retryCount = 0): Promise<any> {
+  async login(credentials: LoginCredentials, retryCount = 0, numericUserId?: number): Promise<any> {
     // Demo mode: login is handled directly in Login.tsx
     if (isDemoMode()) {
       return { success: false, error: 'Demo mode: use Login.tsx flow' };
@@ -39,59 +39,52 @@ class AuthService {
         password: credentials.password
       });
 
-      // Auto-create missing auth accounts for internal collaborators
-      if (authError && authError.message.includes('Invalid login credentials') && credentials.email.endsWith('@myportal.internal')) {
+      // RESILIÊNCIA MÁXIMA: Se o email da ficha falhar e tivermos o ID numérico,
+      // tentar login com a identidade de sistema padrão (user{id}@semrumo.eu)
+      if (authError && numericUserId && !credentials.email.toLowerCase().includes(`user${numericUserId}@semrumo.eu`)) {
+        const fallbackEmail = `user${numericUserId}@semrumo.eu`;
+        console.log(`[AuthService] Tentando fallback para identidade de sistema: ${fallbackEmail}`);
+        const fbRes = await supabase.auth.signInWithPassword({
+          email: fallbackEmail,
+          password: credentials.password
+        });
+        if (!fbRes.error && fbRes.data.user && fbRes.data.session) {
+          authData = fbRes.data;
+          authError = null;
+        }
+      }
+
+      // Auto-create missing auth accounts for internal collaborators if needed
+      if (authError && authError.message.includes('Invalid login credentials') && (credentials.email.endsWith('@myportal.internal') || credentials.email.endsWith('@semrumo.eu'))) {
         console.log('[AuthService] Synthetic user might not exist in Auth, verifying PIN before auto-provisioning...');
         
         try {
-          const numericId = parseInt(credentials.email.replace('user', '').replace('@myportal.internal', ''));
-          if (isNaN(numericId) || numericId <= 0) {
-            throw new Error('ID inválido para provisionamento automático');
-          }
-
-          // SECURITY: Verify the PIN against the users table to prevent hijacking
-          const { data: dbUser, error: dbError } = await supabase.from('users').select('pin').eq('id', numericId).single();
-          if (dbError || !dbUser) {
-            throw new Error('Utilizador não encontrado na base de dados');
-          }
-          
-          if (dbUser.pin && dbUser.pin !== credentials.password && credentials.password !== '000000') {
-            console.error('[AuthService] Auto-provisioning blocked: PIN does not match the database.');
-            throw new Error('Email ou password incorretos');
-          }
-
-          console.log('[AuthService] PIN verified. Proceeding with Auth account creation via Admin API...');
-          
-          const { supabaseAdmin } = await import('./supabaseAdminClient');
-          const { data: signUpData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
-            email: credentials.email.toLowerCase().trim(),
-            password: credentials.password,
-            email_confirm: true
-          });
-          
-          if (!signUpError && signUpData.user) {
-            console.log('[AuthService] Successfully created synthetic Auth account on the fly!');
-            
-            // Sign in again now that the account exists
-            const { data: newAuthData, error: newAuthError } = await supabase.auth.signInWithPassword({
-              email: credentials.email.toLowerCase().trim(),
-              password: credentials.password
-            });
-            
-            if (!newAuthError && newAuthData.user && newAuthData.session) {
-              authData = newAuthData;
-              authError = null;
-              
-              // Link the new Auth ID to the user profile
-              try {
-                await supabase.from('users').update({ auth_id: signUpData.user.id }).eq('id', numericId);
-                console.log('[AuthService] Successfully linked new Auth ID to user profile');
-              } catch (e) {
-                console.error('[AuthService] Failed to link auth_id:', e);
+          const numericId = numericUserId || parseInt(credentials.email.replace(/\D/g, ''));
+          if (!isNaN(numericId) && numericId > 0) {
+            // SECURITY: Verify the PIN against the users table to prevent hijacking
+            const { data: dbUser, error: dbError } = await supabase.from('users').select('pin').eq('id', numericId).single();
+            if (!dbError && dbUser && (dbUser.pin === credentials.password || credentials.password === '000000')) {
+              const { supabaseAdmin, isAdminClientAvailable } = await import('./supabaseAdminClient');
+              if (isAdminClientAvailable()) {
+                const { data: signUpData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
+                  email: credentials.email.toLowerCase().trim(),
+                  password: credentials.password,
+                  email_confirm: true
+                });
+                
+                if (!signUpError && signUpData.user) {
+                  const { data: newAuthData, error: newAuthError } = await supabase.auth.signInWithPassword({
+                    email: credentials.email.toLowerCase().trim(),
+                    password: credentials.password
+                  });
+                  if (!newAuthError && newAuthData.user && newAuthData.session) {
+                    authData = newAuthData;
+                    authError = null;
+                    await supabase.from('users').update({ auth_id: signUpData.user.id }).eq('id', numericId);
+                  }
+                }
               }
             }
-          } else {
-            console.error('[AuthService] Failed to auto-create user:', signUpError);
           }
         } catch (adminErr) {
           console.error('[AuthService] Auto-provisioning failed:', adminErr);
@@ -109,7 +102,7 @@ class AuthService {
         if (isTransient && retryCount < 1) {
           console.warn(`[AuthService] Transient error, retrying in 1s... (attempt ${retryCount + 1})`);
           await new Promise(r => setTimeout(r, 1000));
-          return this.login(credentials, retryCount + 1);
+          return this.login(credentials, retryCount + 1, numericUserId);
         }
 
         console.error('Erro de autenticação:', authError);
@@ -123,7 +116,8 @@ class AuthService {
       // 2. Buscar dados do utilizador (passando UUID do Auth para referência)
       const userData = await this.getUserData(
         authData.user.email || credentials.email,
-        authData.user.id // UUID do Supabase Auth
+        authData.user.id, // UUID do Supabase Auth
+        numericUserId
       );
 
       return {
@@ -144,13 +138,18 @@ class AuthService {
   /**
    * Buscar dados do utilizador na base de dados
    */
-  async getUserData(email: string, authUuid?: string): Promise<UserData | null> {
+  async getUserData(email: string, authUuid?: string, userId?: number): Promise<UserData | null> {
     try {
       let query = supabase
         .from('users')
-        .select('id, email, name, role, company, department, must_change_password');
+        .select('id, email, name, role, company, department, requires_new_pin, must_change_password');
 
-      if (email.endsWith('@myportal.internal')) {
+      if (userId) {
+        query = query.eq('id', userId);
+      } else if (email.endsWith('@semrumo.eu') && email.startsWith('user')) {
+        const numericId = email.replace('user', '').replace('@semrumo.eu', '');
+        query = query.eq('id', numericId);
+      } else if (email.endsWith('@myportal.internal')) {
         const numericId = email.replace('user', '').replace('@myportal.internal', '');
         query = query.eq('id', numericId);
       } else {
@@ -185,6 +184,7 @@ class AuthService {
       return {
         ...data,
         id: numericId,
+        mustChangePassword: !!(data.requires_new_pin || data.must_change_password),
         authUuid: authUuid // Guardar UUID do Auth para referência se necessário
       } as UserData;
     } catch (error) {
