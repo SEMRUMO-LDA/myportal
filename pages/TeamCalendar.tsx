@@ -4,7 +4,8 @@ import { CalendarDays, ChevronLeft, ChevronRight, X, Save, Users, MapPin, Buildi
 import { getEffectiveScheduleDay } from '../utils/scheduleUtils';
 import QuorumAnalyzer from '../components/QuorumAnalyzer';
 import Header from '../components/Header';
-import { User, Leave, LeaveType, ScheduleTemplate, Location, Department, UserStatus, AbsenceStatus } from '../types';
+import { User, Leave, LeaveType, ScheduleTemplate, Location, Department, UserStatus, AbsenceStatus, Holiday } from '../types';
+import { checkIsHoliday } from '../utils/holidayUtils';
 import { supabase } from '../services/supabaseClient';
 import { useOutletContext } from 'react-router-dom';
 
@@ -15,13 +16,14 @@ interface TeamCalendarProps {
     scheduleTemplates: ScheduleTemplate[];
     locations: Location[];
     departments: Department[];
+    holidays?: Holiday[];
     onAddLeave: (leave: Omit<Leave, 'id' | 'createdAt' | 'updatedAt'>) => Promise<boolean | void> | void;
     onUpdateLeave?: (leave: Leave) => Promise<boolean | void> | void;
     currentUser: User | null;
     kioskMode?: boolean;
 }
 
-const TeamCalendar: React.FC<TeamCalendarProps> = ({ users, leaves, leaveTypes, scheduleTemplates, locations, departments, onAddLeave, onUpdateLeave, currentUser, kioskMode = false }) => {
+const TeamCalendar: React.FC<TeamCalendarProps> = ({ users, leaves, leaveTypes, scheduleTemplates, locations, departments, holidays = [], onAddLeave, onUpdateLeave, currentUser, kioskMode = false }) => {
     const { toggleSidebar } = useOutletContext<{ toggleSidebar: () => void }>();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'TIMELINE' | 'MONTH'>('TIMELINE');
@@ -364,10 +366,25 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ users, leaves, leaveTypes, 
                                 {Array.from({ length: daysInMonth }, (_, i) => {
                                     const d = new Date(year, month, i + 1);
                                     const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                                    const holidayInfo = checkIsHoliday(d, holidays);
+
                                     return (
-                                        <th key={i} className={`px-1 py-2 text-center text-xs font-medium w-10 ${isWeekend ? 'bg-gray-100 text-gray-400' : 'text-gray-600'}`}>
-                                            <div>{i + 1}</div>
-                                            <div className="text-[10px] uppercase">{['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][d.getDay()]}</div>
+                                        <th
+                                            key={i}
+                                            title={holidayInfo.isHoliday ? `${i + 1} - ${holidayInfo.name} (Feriado)` : undefined}
+                                            className={`px-1 py-2 text-center text-xs font-medium w-10 transition-colors ${
+                                                holidayInfo.isHoliday
+                                                    ? 'bg-amber-100 text-amber-900 border-b-2 border-b-amber-500 font-extrabold'
+                                                    : isWeekend
+                                                    ? 'bg-gray-100 text-gray-400'
+                                                    : 'text-gray-600'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-center gap-0.5">
+                                                {holidayInfo.isHoliday && <span className="text-[9px]">🎉</span>}
+                                                <span>{i + 1}</span>
+                                            </div>
+                                            <div className="text-[10px] uppercase font-bold">{['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][d.getDay()]}</div>
                                         </th>
                                     );
                                 })}
@@ -398,6 +415,7 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ users, leaves, leaveTypes, 
                                         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                                         const d = new Date(year, month, day);
                                         const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                                        const holidayInfo = checkIsHoliday(d, holidays, user.locationId);
 
                                         // KIOSK MODE LOGIC:
                                         // 1. Ignore leaves (set to null)
@@ -416,7 +434,13 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ users, leaves, leaveTypes, 
                                             <td
                                                 key={i}
                                                 onClick={() => leave ? handleLeaveClick(leave, user, canViewDetails) : (!kioskMode && handleCellClick(user, day))}
-                                                className={`px-1 py-1 text-center cursor-pointer transition-colors relative ${isWeekend ? 'bg-gray-50' : ''} ${!leave ? 'hover:bg-brand-50' : canViewDetails ? 'hover:opacity-80' : ''} ${hasConflict ? 'ring-1 ring-inset ring-orange-400' : ''}`}
+                                                className={`px-1 py-1 text-center cursor-pointer transition-colors relative ${
+                                                    holidayInfo.isHoliday
+                                                        ? 'bg-amber-50/60'
+                                                        : isWeekend
+                                                        ? 'bg-gray-50'
+                                                        : ''
+                                                } ${!leave ? 'hover:bg-brand-50' : canViewDetails ? 'hover:opacity-80' : ''} ${hasConflict ? 'ring-1 ring-inset ring-orange-400' : ''}`}
                                             >
                                                 {hasConflict && !leave && (
                                                     <div className="absolute top-0 right-0 w-2 h-2 bg-orange-400 rounded-full" title="Conflito: múltiplas ausências"></div>
@@ -440,6 +464,13 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ users, leaves, leaveTypes, 
 
                                                         {!canViewDetails && <span className="text-[9px]">AUSENTE</span>}
                                                     </div>
+                                                ) : holidayInfo.isHoliday ? (
+                                                    <span
+                                                        className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-1 py-0.5 rounded border border-amber-300 block truncate"
+                                                        title={`Feriado: ${holidayInfo.name}`}
+                                                    >
+                                                        FERIADO
+                                                    </span>
                                                 ) : scheduleDetails.label ? (
                                                     <span className="text-[10px] text-gray-400">{scheduleDetails.label}</span>
                                                 ) : isWeekend ? (
@@ -481,6 +512,7 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ users, leaves, leaveTypes, 
                                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
                                 const d = new Date(year, month, i);
                                 const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                                const holidayInfo = checkIsHoliday(d, holidays);
 
                                 // Find absences for this day
                                 const dayAbsences = filteredUsers.map(u => {
@@ -491,8 +523,15 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ users, leaves, leaveTypes, 
                                 }).filter((item): item is { user: User, leave: Leave, type: LeaveType | undefined } => item !== null && item.type !== undefined);
 
                                 matrix.push(
-                                    <div key={i} className={`min-h-[120px] border-b border-r border-gray-100 p-2 relative group hover:bg-gray-50 transition-colors ${isWeekend ? 'bg-gray-50/30' : ''}`}>
-                                        <div className={`text-right text-sm font-bold mb-1 ${isWeekend ? 'text-gray-400' : 'text-gray-700'}`}>{i}</div>
+                                    <div key={i} className={`min-h-[120px] border-b border-r border-gray-100 p-2 relative group hover:bg-gray-50 transition-colors ${holidayInfo.isHoliday ? 'bg-amber-50/40' : isWeekend ? 'bg-gray-50/30' : ''}`}>
+                                        <div className={`text-right text-sm font-bold mb-1 flex items-center ${holidayInfo.isHoliday ? 'justify-between' : 'justify-end'} ${holidayInfo.isHoliday ? 'text-amber-800' : isWeekend ? 'text-gray-400' : 'text-gray-700'}`}>
+                                            {holidayInfo.isHoliday && (
+                                                <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300 truncate max-w-[80%]" title={holidayInfo.name}>
+                                                    🎉 {holidayInfo.name}
+                                                </span>
+                                            )}
+                                            <span>{i}</span>
+                                        </div>
 
                                         <div className="space-y-1">
                                             {dayAbsences.map(({ user, leave, type }) => {
@@ -553,6 +592,14 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ users, leaves, leaveTypes, 
                 <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded-full bg-orange-400"></div>
                     <span>Conflito Dept.</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-sm bg-amber-100 border border-amber-400"></div>
+                    <span>Feriado</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-sm bg-gray-100 border border-gray-300"></div>
+                    <span>Folga</span>
                 </div>
             </div>
 

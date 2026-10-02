@@ -21,11 +21,14 @@ import Header from '../components/Header';
 import VacationBalanceCard, { calculateVacationBalance } from '../components/VacationBalanceCard';
 import SearchableSelect from '../components/SearchableSelect';
 import KioskCalendarModal from '../components/KioskCalendarModal';
-import { User, Leave, LeaveType, AbsenceStatus, UserStatus, ScheduleTemplate } from '../types';
+import { User, Leave, LeaveType, AbsenceStatus, UserStatus, ScheduleTemplate, Holiday } from '../types';
 import { getEffectiveScheduleDay } from '../utils/scheduleUtils';
+import { calculateVacationDaysDetails } from '../utils/holidayUtils';
 import { getRoleDisplayName } from '../utils/authUtils';
 import { useToast } from '../context/ToastContext';
 import { downloadICS as downloadICSService, addToGoogleCalendar, addToOutlookCalendar } from '../services/calendarIntegration';
+import { supabase } from '../services/supabaseClient';
+import { wassengerService } from '../services/wassengerService';
 
 interface EmployeeVacationsProps {
     user: User;
@@ -33,6 +36,7 @@ interface EmployeeVacationsProps {
     leaves: Leave[];
     leaveTypes: LeaveType[];
     scheduleTemplates?: ScheduleTemplate[];
+    holidays?: Holiday[];
     onAddLeave?: (leave: Omit<Leave, 'id' | 'createdAt' | 'updatedAt'>) => Promise<boolean | void> | void;
     defaultTab?: 'overview' | 'request';
     kioskMode?: boolean;
@@ -44,6 +48,7 @@ const EmployeeVacations: React.FC<EmployeeVacationsProps> = ({
     leaves = [],
     leaveTypes = [],
     scheduleTemplates = [],
+    holidays = [],
     onAddLeave,
     defaultTab = 'overview',
     kioskMode = false
@@ -128,32 +133,21 @@ const EmployeeVacations: React.FC<EmployeeVacationsProps> = ({
         return Array.from(years).sort((a, b) => b - a);
     }, [myLeaves, currentYear]);
 
-    // Calculate vacation balance
+    const userTemplate = useMemo(() => {
+        return scheduleTemplates.find(t => t.id === user.scheduleTemplateId);
+    }, [scheduleTemplates, user.scheduleTemplateId]);
+
+    // Calculate vacation balance (excluding days off and holidays from deducted days)
     const vacationBalance = useMemo(() => {
-        return calculateVacationBalance(user, leaves, user.id, leaveTypes, scheduleTemplates);
-    }, [user, leaves, leaveTypes, scheduleTemplates]);
+        return calculateVacationBalance(user, leaves, user.id, leaveTypes, scheduleTemplates, 3, 31, holidays);
+    }, [user, leaves, leaveTypes, scheduleTemplates, holidays]);
 
-    // Calculate effective work days excluding off-days
-    const calculateEffectiveDays = (start: string, end: string) => {
-        if (!start || !end) return 0;
-        const startD = new Date(start + 'T00:00:00');
-        const endD = new Date(end + 'T00:00:00');
-        if (endD < startD) return 0;
+    // Calculate effective vacation days with transparent subtraction of folgas & feriados
+    const vacationCalculation = useMemo(() => {
+        return calculateVacationDaysDetails(startDate, endDate, user, userTemplate, holidays);
+    }, [startDate, endDate, user, userTemplate, holidays]);
 
-        let count = 0;
-        const iter = new Date(startD);
-        const userTemplate = scheduleTemplates.find(t => t.id === user.scheduleTemplateId);
-
-        while (iter <= endD) {
-            const daySchedule = getEffectiveScheduleDay(iter, user, userTemplate);
-            const isOff = daySchedule?.isOff ?? (iter.getDay() === 0 || iter.getDay() === 6);
-            if (!isOff) count++;
-            iter.setDate(iter.getDate() + 1);
-        }
-        return count;
-    };
-
-    const totalDaysRequested = useMemo(() => calculateEffectiveDays(startDate, endDate), [startDate, endDate]);
+    const totalDaysRequested = vacationCalculation.vacationDays;
 
     // Check for team conflicts (same department)
     const hasTeamConflict = useMemo(() => {
@@ -198,6 +192,27 @@ const EmployeeVacations: React.FC<EmployeeVacationsProps> = ({
         const start = new Date(startDateStr + 'T00:00:00');
         const end = new Date(endDateStr + 'T00:00:00');
         return Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    };
+
+    // Calculate effective working days for any leave item (excluding folgas & feriados for vacations)
+    const getLeaveEffectiveDays = (leave: Leave) => {
+        const lt = getLeaveType(leave.leaveTypeId);
+        if (lt?.deductsVacation || lt?.name.toLowerCase().includes('férias')) {
+            const calc = calculateVacationDaysDetails(leave.startDate, leave.endDate, user, userTemplate, holidays);
+            return {
+                days: calc.vacationDays,
+                label: calc.vacationDays === 1 ? '1 dia útil' : `${calc.vacationDays} dias úteis`,
+                sublabel: (calc.offDays > 0 || calc.holidaysCount > 0)
+                    ? `(${calc.calendarDays}d total · -${calc.offDays} folgas${calc.holidaysCount > 0 ? ` · -${calc.holidaysCount} feriado` : ''})`
+                    : null
+            };
+        }
+        const calendarDays = calculateDaysDuration(leave.startDate, leave.endDate);
+        return {
+            days: calendarDays,
+            label: calendarDays === 1 ? '1 dia' : `${calendarDays} dias`,
+            sublabel: null
+        };
     };
 
     // Calendar export handlers
@@ -247,6 +262,66 @@ const EmployeeVacations: React.FC<EmployeeVacationsProps> = ({
 
             if (success === false) {
                 return;
+            }
+
+            // Inform substitute colleague immediately if one was designated
+            if (backupUserId) {
+                try {
+                    const backupUser = users.find(u => u.id === backupUserId);
+                    const requesterName = user.name;
+                    const sFormatted = new Date(startDate + 'T00:00:00').toLocaleDateString('pt-PT');
+                    const eFormatted = new Date(endDate + 'T00:00:00').toLocaleDateString('pt-PT');
+                    const msgContent = `Olá ${backupUser?.name || 'Colega'}! Indiquei-te como meu colega de cobertura/substituição durante o meu período de férias de ${sFormatted} a ${eFormatted}. Obrigado!`;
+
+                    // 1. Insert into Supabase internal_messages
+                    await supabase.from('internal_messages').insert({
+                        sender_id: user.id,
+                        sender_name: requesterName,
+                        receiver_id: backupUserId,
+                        subject: '🤝 Colega Substituto / Cobertura de Férias',
+                        content: msgContent,
+                        date: new Date().toISOString(),
+                        read: false,
+                        priority: 'NORMAL'
+                    });
+
+                    // 2. Broadcast over realtime live chat channel
+                    const channel = supabase.channel('myportal-live-chat');
+                    channel.send({
+                        type: 'broadcast',
+                        event: 'chat_message',
+                        payload: {
+                            id: `backup-sub-${Date.now()}`,
+                            senderId: user.id,
+                            senderName: requesterName,
+                            receiverId: backupUserId,
+                            subject: '🤝 Colega Substituto / Cobertura de Férias',
+                            content: msgContent,
+                            date: new Date().toISOString(),
+                            read: false,
+                            priority: 'NORMAL'
+                        }
+                    });
+
+                    // 3. Send WhatsApp notification if configured
+                    if (backupUser?.phone) {
+                        try {
+                            await wassengerService.loadConfig();
+                            if (wassengerService.isConfigured()) {
+                                await wassengerService.sendMessage(
+                                    backupUser.phone,
+                                    `📢 *MyPortal - Indicação de Substituição*\n\nOlá ${backupUser.name},\n${requesterName} indicou-o(a) como colega de substituição/cobertura para as férias de ${sFormatted} a ${eFormatted}.`
+                                );
+                            }
+                        } catch (errW) {
+                            console.warn('Wassenger error:', errW);
+                        }
+                    }
+
+                    addToast('success', 'Pedido registado com sucesso! O colega substituto foi informado.');
+                } catch (subErr) {
+                    console.error('Error notifying substitute colleague:', subErr);
+                }
             }
 
             // Reset form
@@ -346,7 +421,7 @@ const EmployeeVacations: React.FC<EmployeeVacationsProps> = ({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {pendingLeaves.map(leave => {
                                     const lt = getLeaveType(leave.leaveTypeId);
-                                    const days = calculateDaysDuration(leave.startDate, leave.endDate);
+                                    const daysInfo = getLeaveEffectiveDays(leave);
                                     return (
                                         <div
                                             key={leave.id}
@@ -367,9 +442,14 @@ const EmployeeVacations: React.FC<EmployeeVacationsProps> = ({
 
                                             <div className="flex items-center justify-between text-sm text-gray-600">
                                                 <span>{formatDate(leave.startDate)} — {formatDate(leave.endDate)}</span>
-                                                <span className="font-semibold text-gray-800">
-                                                    {days} {days === 1 ? 'dia' : 'dias'}
-                                                </span>
+                                                <div className="text-right">
+                                                    <span className="font-semibold text-gray-800 block">
+                                                        {daysInfo.label}
+                                                    </span>
+                                                    {daysInfo.sublabel && (
+                                                        <span className="text-[10px] text-gray-400 block">{daysInfo.sublabel}</span>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             {leave.notes && (
@@ -481,7 +561,7 @@ const EmployeeVacations: React.FC<EmployeeVacationsProps> = ({
                             <div className="space-y-3">
                                 {filteredHistoryLeaves.map(leave => {
                                     const lt = getLeaveType(leave.leaveTypeId);
-                                    const days = calculateDaysDuration(leave.startDate, leave.endDate);
+                                    const daysInfo = getLeaveEffectiveDays(leave);
                                     const isApproved = leave.status === 'APPROVED' || leave.status?.toLowerCase() === 'approved';
                                     const isRejected = leave.status === 'REJECTED' || leave.status?.toLowerCase() === 'rejected';
                                     const isPast = new Date(leave.endDate) < new Date();
@@ -537,7 +617,10 @@ const EmployeeVacations: React.FC<EmployeeVacationsProps> = ({
                                                     </div>
 
                                                     <p className="text-xs text-gray-500 mt-1">
-                                                        <span className="font-semibold text-gray-700">{days} {days === 1 ? 'dia' : 'dias'}</span>
+                                                        <span className="font-semibold text-gray-700">{daysInfo.label}</span>
+                                                        {daysInfo.sublabel && (
+                                                            <span className="text-[11px] text-gray-400 ml-1.5">{daysInfo.sublabel}</span>
+                                                        )}
                                                         {leave.notes && <span className="italic ml-2">— "{leave.notes}"</span>}
                                                     </p>
                                                 </div>
@@ -596,21 +679,6 @@ const EmployeeVacations: React.FC<EmployeeVacationsProps> = ({
                     {/* Main Form */}
                     <form onSubmit={handleSubmitRequest} className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
                         <div className="p-6 md:p-8 space-y-6">
-                            {/* Collaborator details header */}
-                            <div className="bg-gradient-to-r from-brand-50 to-blue-50 p-4 rounded-xl border border-brand-100 flex items-center gap-4">
-                                <img
-                                    src={user.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=0D8ABC&color=fff`}
-                                    alt={user.name}
-                                    className="w-14 h-14 rounded-full border-2 border-white shadow-sm object-cover"
-                                />
-                                <div>
-                                    <div className="font-bold text-base md:text-lg text-gray-900">{user.name}</div>
-                                    <div className="text-xs md:text-sm text-gray-600">
-                                        {user.department || 'Geral'} · {getRoleDisplayName(user.role)}
-                                    </div>
-                                </div>
-                            </div>
-
                             {/* Leave Type Selector */}
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-3">
@@ -688,19 +756,43 @@ const EmployeeVacations: React.FC<EmployeeVacationsProps> = ({
                                 </div>
                             </div>
 
-                            {/* Days Counter */}
-                            {totalDaysRequested > 0 && (
-                                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <CalendarCheck className="text-emerald-600" size={22} />
-                                        <div>
-                                            <span className="text-sm font-bold text-emerald-950 block">Duração Efetiva Calculada</span>
-                                            <span className="text-xs text-emerald-700">Exclui folgas e fins de semana do seu horário</span>
+                            {/* Transparent Days Counter with Folgas & Feriados Subtracted */}
+                            {startDate && endDate && (
+                                <div className="bg-emerald-50/80 border-2 border-emerald-300 rounded-2xl p-4 md:p-5 shadow-xs">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl flex-shrink-0">
+                                                <CalendarCheck size={24} />
+                                            </div>
+                                            <div>
+                                                <span className="text-sm font-bold text-emerald-950 block">Duração Efetiva a Descontar</span>
+                                                <span className="text-xs text-emerald-700">Apenas dias úteis de trabalho são descontados do saldo</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-left sm:text-right">
+                                            <span className="text-2xl md:text-3xl font-black text-emerald-700">
+                                                {totalDaysRequested} {totalDaysRequested === 1 ? 'dia útil' : 'dias úteis'}
+                                            </span>
+                                            <p className="text-[11px] text-emerald-600 font-semibold">a debitar do seu saldo</p>
                                         </div>
                                     </div>
-                                    <span className="text-2xl font-extrabold text-emerald-700">
-                                        {totalDaysRequested} {totalDaysRequested === 1 ? 'dia útil' : 'dias úteis'}
-                                    </span>
+
+                                    {/* Breakdown of Subtractions */}
+                                    {(vacationCalculation.offDays > 0 || vacationCalculation.holidaysCount > 0) && (
+                                        <div className="mt-3 pt-3 border-t border-emerald-200/80 flex flex-wrap items-center gap-2 text-xs">
+                                            <span className="font-bold text-emerald-900">Período de {vacationCalculation.calendarDays} dias no calendário:</span>
+                                            {vacationCalculation.offDays > 0 && (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white text-emerald-800 font-bold rounded-lg border border-emerald-200">
+                                                    ✓ -{vacationCalculation.offDays} {vacationCalculation.offDays === 1 ? 'folga/fim-de-semana' : 'folgas/fins-de-semana'}
+                                                </span>
+                                            )}
+                                            {vacationCalculation.holidaysCount > 0 && (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-900 font-bold rounded-lg border border-amber-300">
+                                                    ✓ -{vacationCalculation.holidaysCount} {vacationCalculation.holidaysCount === 1 ? 'feriado' : 'feriados'} ({vacationCalculation.holidaysList.map(h => h.name).join(', ')})
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

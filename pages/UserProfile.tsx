@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { User, Absence, AbsenceStatus, UserStatus, Company, AbsenceType, OnboardingTask, AttendanceRestrictionType, UserHistoryLog, JobRole, Department, Location, ScheduleTemplate, UserStatusLabels, Leave, LeaveType, Anomaly } from '../types';
+import { User, Absence, AbsenceStatus, UserStatus, Company, AbsenceType, OnboardingTask, AttendanceRestrictionType, UserHistoryLog, JobRole, Department, Location, ScheduleTemplate, UserStatusLabels, Leave, LeaveType, Anomaly, Holiday } from '../types';
 import { DEFAULT_ONBOARDING_TASKS, DEFAULT_ATTENDANCE_CONFIG } from '../constants';
 import { calculateVacationBalance } from '../components/VacationBalanceCard';
 import { ArrowLeft, Save, Sparkles, Mail, User as UserIcon, Calendar, MapPin, CreditCard, FileText, Phone, Camera, Building2, CheckSquare, PenTool, Eye, Globe, ShieldAlert, Plus, Trash2, LocateFixed, Clock, Lock, Banknote, Fingerprint, Heart, AlertCircle, History, Coffee, Briefcase as BriefcaseIcon, Settings, X, ChevronRight, RotateCw, CheckCircle2, Zap, AlertTriangle, CheckCircle } from 'lucide-react';
@@ -20,6 +20,7 @@ interface UserProfileProps {
   locations?: Location[];
   scheduleTemplates?: ScheduleTemplate[];
   anomalies?: Anomaly[];
+  holidays?: Holiday[];
 }
 
 const InputField = ({ label, name, type = 'text', icon: Icon, fullWidth = false, readOnly = false, placeholder = '', required = false, formData, handleChange, errors, ...rest }: any) => {
@@ -58,7 +59,7 @@ const InputField = ({ label, name, type = 'text', icon: Icon, fullWidth = false,
   );
 };
 
-const UserProfile: React.FC<UserProfileProps> = ({ users, absences = [], roles = [], departments = [], locations = [], scheduleTemplates = [], leftOutProp, leaves = [], leaveTypes = [], anomalies = [], onUpdateUser, onAddUser }: any) => {
+const UserProfile: React.FC<UserProfileProps> = ({ users, absences = [], roles = [], departments = [], locations = [], scheduleTemplates = [], leftOutProp, leaves = [], leaveTypes = [], anomalies = [], holidays = [], onUpdateUser, onAddUser }: any) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -132,8 +133,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ users, absences = [], roles =
   // Vacation Balance
   const vacationBalance = useMemo(() => {
     if (isNew) return null;
-    return calculateVacationBalance(formData, leaves, formData.id, leaveTypes, scheduleTemplates);
-  }, [formData, leaves, leaveTypes, scheduleTemplates, isNew]);
+    return calculateVacationBalance(formData, leaves, formData.id, leaveTypes, scheduleTemplates, 3, 31, holidays);
+  }, [formData, leaves, leaveTypes, scheduleTemplates, isNew, holidays]);
 
   // Fetch History Logs
   useEffect(() => {

@@ -3680,6 +3680,22 @@ function App() {
       actionUrl: '/admin/absences',
     });
 
+    // Notify substitute colleague if one was indicated
+    if (leave.backupUserId) {
+      const sFormatted = new Date(leave.startDate + 'T00:00:00').toLocaleDateString('pt-PT');
+      const eFormatted = new Date(leave.endDate + 'T00:00:00').toLocaleDateString('pt-PT');
+      emitNotificationBulk([leave.backupUserId], {
+        type: 'LEAVE_REQUEST',
+        title: 'Indicação de Substituição de Férias',
+        description: `${requesterName} indicou-o(a) como colega substituto para o período de ${sFormatted} a ${eFormatted}.`,
+        severity: 'info',
+        actionType: 'VIEW',
+        referenceId: data.id,
+        referenceTable: 'leaves',
+        actionUrl: '/portal/vacations',
+      });
+    }
+
     return true;
   };
 
@@ -4042,7 +4058,7 @@ const AppRoutes = ({ users, loading, dataReady, absences, timeLogs, setTimeLogs,
           }>
             <Route index element={<Dashboard users={users} absences={absences} logs={timeLogs} events={events} anomalies={anomalies} onUpdateAnomaly={onUpdateAnomaly} currentUser={currentUser} />} />
             <Route path="users" element={<UserList users={users} />} />
-            <Route path="users/:id" element={<UserProfile users={users} absences={absences} leaves={leaves} leaveTypes={leaveTypes} roles={jobRoles} departments={departments} locations={locations} scheduleTemplates={scheduleTemplates} onUpdateUser={onUpdateUser} onAddUser={onAddUser} />} />
+            <Route path="users/:id" element={<UserProfile users={users} absences={absences} leaves={leaves} leaveTypes={leaveTypes} roles={jobRoles} departments={departments} locations={locations} scheduleTemplates={scheduleTemplates} holidays={holidays} onUpdateUser={onUpdateUser} onAddUser={onAddUser} />} />
             <Route path="absences" element={<AbsenceManagement currentUser={currentUser} leaves={leaves} leaveTypes={leaveTypes} users={users} departments={departments} locations={locations} onUpdateLeave={onUpdateLeave} onAddLeave={onAddLeave} anomalies={anomalies} onUpdateAnomaly={onUpdateAnomaly} />} />
             <Route path="attendance" element={<AttendanceControl logs={timeLogs} users={users} locations={locations} departments={departments} anomalies={anomalies} currentUser={currentUser} onAddLog={onAddTimeLog} onDeleteLog={onDeleteTimeLog} hourBankAdjustments={hourBankAdjustments} onAddHourBankAdjustment={onAddHourBankAdjustment} onUpdateAnomaly={onUpdateAnomaly} />} />
             <Route path="attendance/manual-entry" element={<ManualTimeEntry users={users} locations={locations} onAddLog={onAddTimeLog} />} />
@@ -4051,7 +4067,7 @@ const AppRoutes = ({ users, loading, dataReady, absences, timeLogs, setTimeLogs,
             <Route path="fleet" element={<FleetManagement users={users} />} />
             <Route path="trip-history" element={<TripHistory users={users} />} />
             <Route path="fleet/monthly-report" element={<MonthlyTripReport />} />
-            <Route path="messages" element={<Messages currentUser={currentUser} users={users} messages={messages} onSendMessage={onSendMessage} onMarkRead={onMarkMessageRead} />} />
+            <Route path="messages" element={<Messages currentUser={currentUser} users={users} messages={messages} timeLogs={timeLogs} leaves={leaves} onSendMessage={onSendMessage} onMarkRead={onMarkMessageRead} />} />
             <Route path="settings" element={<Settings />} />
             <Route path="settings/lock-month" element={<LockMonth lockedMonths={lockedMonths} onAddLock={onAddLock} onDeleteLock={onDeleteLock} />} />
             <Route path="settings/roles" element={<RolesManagement roles={jobRoles} onAddRole={onAddRole} onDeleteRole={onDeleteRole} />} />
@@ -4066,7 +4082,7 @@ const AppRoutes = ({ users, loading, dataReady, absences, timeLogs, setTimeLogs,
             <Route path="settings/schedules" element={<SchedulePeriods periods={schedulePeriods} onAddPeriod={onAddPeriod} onUpdatePeriod={onUpdatePeriod} onDeletePeriod={onDeletePeriod} />} />
             <Route path="settings/schedule-templates" element={<ScheduleTemplates templates={scheduleTemplates} onAdd={onAddScheduleTemplate} onUpdate={onUpdateScheduleTemplate} onDelete={onDeleteScheduleTemplate} />} />
             <Route path="settings/leave-types" element={<LeaveTypesManagement leaveTypes={leaveTypes} onAdd={onAddLeaveType} onUpdate={onUpdateLeaveType} onDelete={onDeleteLeaveType} />} />
-            <Route path="team-calendar" element={<TeamCalendar currentUser={currentUser} users={users} leaves={leaves} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} locations={locations} departments={departments} onAddLeave={onAddLeave} onUpdateLeave={onUpdateLeave} />} />
+            <Route path="team-calendar" element={<TeamCalendar currentUser={currentUser} users={users} leaves={leaves} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} locations={locations} departments={departments} holidays={holidays} onAddLeave={onAddLeave} onUpdateLeave={onUpdateLeave} />} />
             <Route path="analytics" element={<AnalyticsDashboard users={users} timeLogs={timeLogs} leaves={leaves} leaveTypes={leaveTypes} anomalies={anomalies} departments={departments} />} />
             <Route path="climate" element={<OrganizationalClimate users={users} departments={departments} surveyResponses={surveyResponses} anonymousFeedbacks={anonymousFeedbacks} />} />
             {/* <Route path="notifications" element={<NotificationsPage />} /> */}
@@ -4112,6 +4128,7 @@ const AppRoutes = ({ users, loading, dataReady, absences, timeLogs, setTimeLogs,
                       leaveTypes={leaveTypes}
                       scheduleTemplates={scheduleTemplates}
                       dataReady={dataReady}
+                      holidays={holidays}
                     />
                   )}
                 </ResilientKioskWrapper>
@@ -4155,17 +4172,17 @@ const AppRoutes = ({ users, loading, dataReady, absences, timeLogs, setTimeLogs,
                 </div>
               )
             }>
-              <Route path="profile" element={<MyProfile user={currentUser!} absences={absences} departments={departments} users={users} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} onUpdate={onUpdateUser} onAddAbsence={onAddAbsence} anomalies={anomalies} onUpdateAnomaly={onUpdateAnomaly} timeLogs={timeLogs} leaves={leaves} />} />
-              <Route path="attendance" element={<EmployeeAttendance user={currentUser!} logs={timeLogs} leaves={leaves} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} />} />
+              <Route path="profile" element={<MyProfile user={currentUser!} absences={absences} departments={departments} users={users} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} holidays={holidays} onUpdate={onUpdateUser} onAddAbsence={onAddAbsence} anomalies={anomalies} onUpdateAnomaly={onUpdateAnomaly} timeLogs={timeLogs} leaves={leaves} />} />
+              <Route path="attendance" element={<EmployeeAttendance user={currentUser!} logs={timeLogs} leaves={leaves} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} holidays={holidays} />} />
               <Route path="time-bank" element={<EmployeeTimeBank user={currentUser!} logs={timeLogs} adjustments={hourBankAdjustments} />} />
               <Route path="expenses" element={<MyExpenses user={currentUser!} expenses={expenses} onAddExpense={onAddExpense} />} />
-              <Route path="vacations" element={<EmployeeVacations user={currentUser!} users={users} leaves={leaves} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} onAddLeave={onAddLeave} defaultTab="overview" />} />
+              <Route path="vacations" element={<EmployeeVacations user={currentUser!} users={users} leaves={leaves} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} holidays={holidays} onAddLeave={onAddLeave} defaultTab="overview" />} />
               <Route path="fleet-booking" element={<FleetBooking user={currentUser!} />} />
               <Route path="vehicle" element={<MyVehicle user={currentUser!} />} />
-              <Route path="messages" element={<Messages currentUser={currentUser!} users={users} messages={messages} onSendMessage={onSendMessage} onMarkRead={onMarkMessageRead} />} />
-              <Route path="request-leave" element={<EmployeeVacations user={currentUser!} users={users} leaveTypes={leaveTypes} leaves={leaves} scheduleTemplates={scheduleTemplates} onAddLeave={onAddLeave} defaultTab="request" />} />
-              <Route path="team-calendar" element={<TeamCalendar currentUser={currentUser!} users={users} leaves={leaves} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} locations={locations} departments={departments} onAddLeave={onAddLeave} onUpdateLeave={onUpdateLeave} kioskMode={false} />} />
-              <Route path="team-status" element={<TeamStatus users={users} logs={timeLogs} />} />
+              <Route path="messages" element={<Messages currentUser={currentUser!} users={users} messages={messages} timeLogs={timeLogs} leaves={leaves} onSendMessage={onSendMessage} onMarkRead={onMarkMessageRead} />} />
+              <Route path="request-leave" element={<EmployeeVacations user={currentUser!} users={users} leaveTypes={leaveTypes} leaves={leaves} scheduleTemplates={scheduleTemplates} holidays={holidays} onAddLeave={onAddLeave} defaultTab="request" />} />
+              <Route path="team-calendar" element={<TeamCalendar currentUser={currentUser!} users={users} leaves={leaves} leaveTypes={leaveTypes} scheduleTemplates={scheduleTemplates} locations={locations} departments={departments} holidays={holidays} onAddLeave={onAddLeave} onUpdateLeave={onUpdateLeave} kioskMode={false} />} />
+              <Route path="team-status" element={<Navigate to="/portal/messages" replace />} />
               <Route path="feedback" element={<EmployeeFeedback user={currentUser!} />} />
               {/* <Route path="notifications" element={<NotificationsPage />} /> */}
             </Route>

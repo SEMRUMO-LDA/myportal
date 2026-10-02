@@ -1,7 +1,8 @@
 import React from 'react';
 import { Calendar, Clock, AlertTriangle, TrendingUp, Gift, ArrowRight } from 'lucide-react';
-import { VacationBalance, User, Leave, LeaveType, ScheduleTemplate } from '../types';
+import { VacationBalance, User, Leave, LeaveType, ScheduleTemplate, Holiday } from '../types';
 import { getEffectiveScheduleDay } from '../utils/scheduleUtils';
+import { checkIsHoliday, checkIsDayOff } from '../utils/holidayUtils';
 
 interface VacationBalanceCardProps {
     balance: VacationBalance;
@@ -187,7 +188,8 @@ export const calculateVacationBalance = (
     leaveTypes: LeaveType[],
     scheduleTemplates: ScheduleTemplate[],
     expiryMonth: number = 3, // Default: March 31st
-    expiryDay: number = 31
+    expiryDay: number = 31,
+    holidays?: Holiday[]
 ): VacationBalance => {
     const currentYear = new Date().getFullYear();
     const today = new Date();
@@ -238,11 +240,12 @@ export const calculateVacationBalance = (
         limitDate.setHours(0, 0, 0, 0);
 
         while (iterDate <= limitDate) {
-            // Check if this day is a day off
-            const daySchedule = getEffectiveScheduleDay(iterDate, user, userTemplate);
-            const isOff = daySchedule?.isOff ?? (iterDate.getDay() === 0 || iterDate.getDay() === 6); // Fallback to weekends if no template
+            // Check if this day is a day off or holiday
+            const isOff = checkIsDayOff(iterDate, user, userTemplate);
+            const holidayInfo = checkIsHoliday(iterDate, holidays, user.locationId);
 
-            if (!isOff) {
+            // Vacation days are ONLY deducted if it is an actual work day (not off and not a holiday)
+            if (!isOff && !holidayInfo.isHoliday) {
                 if (iterDate < today) {
                     used++;
                 } else if (iterDate > today) {

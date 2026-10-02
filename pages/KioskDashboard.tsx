@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, TimeLog, Vehicle, Trip, AppEvent, InternalMessage, Leave, LeaveType, ScheduleTemplate, Location, Department, HourBankAdjustment, Anomaly } from '../types';
+import { User, TimeLog, Vehicle, Trip, AppEvent, InternalMessage, Leave, LeaveType, ScheduleTemplate, Location, Department, HourBankAdjustment, Anomaly, Holiday } from '../types';
 import { Play, Square, Settings, LogOut, MapPin, Globe, Car, Route, Calendar, ChevronRight, CheckCircle2, Receipt, Search, X, Clock, ReceiptEuro, MessageSquare, Users, Coffee, TreePalm, CreditCard, AlertTriangle, Bell, Menu, Loader2, User as UserIcon } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchVehicleByUserId, fetchActiveTrip, startTrip, endTrip, assignFreeVehicleToUser, fetchVehicles, fetchLastTrip, fetchUserTopVehicles, fetchVehicleById } from '../services/fleetService';
@@ -37,9 +37,10 @@ interface KioskDashboardProps {
     leaveTypes?: LeaveType[];
     scheduleTemplates?: ScheduleTemplate[];
     dataReady?: boolean;
+    holidays?: Holiday[];
 }
 
-const KioskDashboard: React.FC<KioskDashboardProps> = ({ user, onClockIn, onBreakStart, onBreakEnd, onClockOut, onLogout, lastLog, messages = [], timeLogs = [], hourBankAdjustments = [], leaves = [], leaveTypes = [], scheduleTemplates = [], dataReady = true }) => {
+const KioskDashboard: React.FC<KioskDashboardProps> = ({ user, onClockIn, onBreakStart, onBreakEnd, onClockOut, onLogout, lastLog, messages = [], timeLogs = [], hourBankAdjustments = [], leaves = [], leaveTypes = [], scheduleTemplates = [], dataReady = true, holidays = [] }) => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { addToast } = useToast();
@@ -208,8 +209,8 @@ const KioskDashboard: React.FC<KioskDashboardProps> = ({ user, onClockIn, onBrea
 
     // Vacation Balance
     const vacationBalance = useMemo(() => {
-        return calculateVacationBalance(user, leaves, user.id, leaveTypes, scheduleTemplates);
-    }, [user, leaves, leaveTypes, scheduleTemplates]);
+        return calculateVacationBalance(user, leaves, user.id, leaveTypes, scheduleTemplates, 3, 31, holidays);
+    }, [user, leaves, leaveTypes, scheduleTemplates, holidays]);
 
     // Filtered vehicles with robust matching
     const filteredVehicles = vehicles.filter(v => {

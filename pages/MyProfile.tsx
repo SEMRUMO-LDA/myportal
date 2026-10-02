@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import Header from '../components/Header';
 import EmployeeTimeline from '../components/EmployeeTimeline';
 import { calculateVacationBalance } from '../components/VacationBalanceCard';
-import { User, Company, Absence, AbsenceStatus, AbsenceType, Department, AbsenceStatusLabels, AbsenceTypeLabels, Anomaly, LeaveType, TimeLog, Leave } from '../types';
+import { User, Company, Absence, AbsenceStatus, AbsenceType, Department, AbsenceStatusLabels, AbsenceTypeLabels, Anomaly, LeaveType, TimeLog, Leave, Holiday } from '../types';
 import {
   Camera,
   Mail,
@@ -55,9 +55,10 @@ interface MyProfileProps {
   onUpdateAnomaly?: (anomaly: Anomaly) => void;
   timeLogs?: TimeLog[];
   leaves?: Leave[];
+  holidays?: Holiday[];
 }
 
-const MyProfile: React.FC<MyProfileProps> = ({ user, absences, departments = [], users = [], leaveTypes = [], onUpdate, onAddAbsence, anomalies = [], onUpdateAnomaly, timeLogs = [], leaves = [], scheduleTemplates = [] }) => {
+const MyProfile: React.FC<MyProfileProps> = ({ user, absences, departments = [], users = [], leaveTypes = [], onUpdate, onAddAbsence, anomalies = [], onUpdateAnomaly, timeLogs = [], leaves = [], scheduleTemplates = [], holidays = [] }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') as any || 'details';
 
@@ -204,8 +205,8 @@ const MyProfile: React.FC<MyProfileProps> = ({ user, absences, departments = [],
 
   // Calculate vacation balance
   const vacationBalance = useMemo(() => {
-    return calculateVacationBalance(user, leaves, user.id, leaveTypes, scheduleTemplates);
-  }, [user, leaves, leaveTypes, scheduleTemplates]);
+    return calculateVacationBalance(user, leaves, user.id, leaveTypes, scheduleTemplates, 3, 31, holidays);
+  }, [user, leaves, leaveTypes, scheduleTemplates, holidays]);
 
   // Helper to get company color for background header
   const getCompanyHeaderColor = (company: Company | string) => {

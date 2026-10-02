@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Header from '../components/Header';
-import { InternalMessage, User } from '../types';
+import { InternalMessage, User, TimeLog, Leave } from '../types';
 import {
   MessageSquare,
   Send,
@@ -20,7 +20,10 @@ import {
   Filter,
   MessageCircle,
   Shield,
-  Circle
+  Circle,
+  Coffee,
+  TreePalm,
+  Clock
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { wassengerService } from '../services/wassengerService';
@@ -31,6 +34,8 @@ interface MessagesProps {
   currentUser?: User;
   users: User[];
   messages: InternalMessage[];
+  timeLogs?: TimeLog[];
+  leaves?: Leave[];
   onSendMessage: (messages: InternalMessage[]) => void;
   onMarkRead: (id: string) => void;
 }
@@ -61,6 +66,8 @@ const Messages: React.FC<MessagesProps> = ({
   currentUser,
   users = [],
   messages = [],
+  timeLogs = [],
+  leaves = [],
   onSendMessage,
   onMarkRead
 }) => {
@@ -73,7 +80,7 @@ const Messages: React.FC<MessagesProps> = ({
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [searchContactTerm, setSearchContactTerm] = useState('');
-  const [contactFilter, setContactFilter] = useState<'ALL' | 'UNREAD' | 'MANAGEMENT' | 'DEPARTMENT'>('ALL');
+  const [contactFilter, setContactFilter] = useState<'ALL' | 'WORKING' | 'BREAK' | 'ON_LEAVE' | 'UNREAD' | 'DEPARTMENT' | 'MANAGEMENT'>('ALL');
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
 
   // Local live messages merged from props + realtime broadcasts
@@ -81,6 +88,14 @@ const Messages: React.FC<MessagesProps> = ({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const channelRef = useRef<any>(null);
+  const selectedContactIdRef = useRef<number | null>(selectedContactId);
+  const onMarkReadRef = useRef(onMarkRead);
+  onMarkReadRef.current = onMarkRead;
+
+  useEffect(() => {
+    selectedContactIdRef.current = selectedContactId;
+  }, [selectedContactId]);
 
   // Sync with prop updates
   useEffect(() => {
@@ -99,16 +114,17 @@ const Messages: React.FC<MessagesProps> = ({
     return currentUser || users[0] || null;
   }, [currentUser, users]);
 
-  // Realtime Supabase Broadcast channel setup
+  // Persistent Realtime Supabase Broadcast channel setup
   useEffect(() => {
     if (!effectiveUser) return;
 
     const channel = supabase.channel('myportal-live-chat', {
       config: { broadcast: { self: false } }
     });
+    channelRef.current = channel;
 
     channel
-      .on('broadcast', { event: 'chat_message' }, (payload: any) => {
+      .on('broadcast', { event: 'chat_message' }, async (payload: any) => {
         const msg = payload?.payload as InternalMessage;
         if (!msg) return;
 
@@ -124,13 +140,19 @@ const Messages: React.FC<MessagesProps> = ({
           });
 
           // If current conversation is open with sender, mark as read immediately
-          if (selectedContactId && Number(selectedContactId) === Number(msg.senderId)) {
-            onMarkRead(msg.id);
-            channel.send({
+          if (selectedContactIdRef.current && Number(selectedContactIdRef.current) === Number(msg.senderId)) {
+            onMarkReadRef.current(msg.id);
+            try {
+              await supabase.from('internal_messages').update({ read: true }).eq('id', msg.id);
+            } catch (e) {
+              console.warn('Error marking read in DB:', e);
+            }
+            channelRef.current?.send({
               type: 'broadcast',
               event: 'message_read',
               payload: { messageId: msg.id }
             });
+            setLiveMessages(prev => prev.map(m => m.id === msg.id ? { ...m, read: true } : m));
           } else {
             addToast('info', `💬 ${msg.senderName}: "${msg.content.slice(0, 35)}${msg.content.length > 35 ? '...' : ''}"`);
           }
@@ -142,9 +164,11 @@ const Messages: React.FC<MessagesProps> = ({
           setLiveMessages(prev => prev.map(m => m.id === messageId ? { ...m, read: true } : m));
         }
       })
-      .subscribe();
+      .subscribe((status: string) => {
+        console.log('[LiveChat] Supabase Realtime channel status:', status);
+      });
 
-    // Polling fallback every 6s to ensure no dropped messages
+    // 2-second polling fallback so dropped packets or background tabs never miss messages
     const pollInterval = setInterval(async () => {
       try {
         const { data, error } = await supabase
@@ -180,19 +204,88 @@ const Messages: React.FC<MessagesProps> = ({
       } catch {
         // Silent poll error
       }
-    }, 6000);
+    }, 2000);
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
       clearInterval(pollInterval);
     };
-  }, [effectiveUser?.id, selectedContactId, onMarkRead, addToast]);
+  }, [effectiveUser?.id, addToast]);
+
+  // Team presence calculation for today
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  const getContactTeamStatus = (contactId: number) => {
+    const userLog = (timeLogs || []).find(l => Number(l.userId) === contactId && l.date === todayStr);
+    if (userLog && userLog.checkIn && !userLog.checkOut) {
+      if (userLog.breakStart && !userLog.breakEnd) {
+        return {
+          status: 'BREAK' as const,
+          label: 'Em Pausa',
+          detail: `Pausa às ${userLog.breakStart.slice(0, 5)}`,
+          badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+          dotColor: 'bg-amber-500',
+          isOnline: true
+        };
+      }
+      return {
+        status: 'WORKING' as const,
+        label: 'Ao Serviço',
+        detail: `Desde as ${userLog.checkIn.slice(0, 5)}`,
+        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        dotColor: 'bg-emerald-500',
+        isOnline: true
+      };
+    }
+    if (userLog && userLog.checkOut) {
+      return {
+        status: 'OFFLINE' as const,
+        label: 'Terminou Serviço',
+        detail: `Saída às ${userLog.checkOut.slice(0, 5)}`,
+        badgeColor: 'bg-gray-100 text-gray-600 border-gray-200',
+        dotColor: 'bg-gray-400',
+        isOnline: false
+      };
+    }
+    const onLeave = (leaves || []).find(
+      l => Number(l.userId) === contactId &&
+      (l.status === 'APPROVED' || l.status?.toLowerCase() === 'approved') &&
+      todayStr >= l.startDate && todayStr <= l.endDate
+    );
+    if (onLeave) {
+      return {
+        status: 'ON_LEAVE' as const,
+        label: 'De Férias / Ausente',
+        detail: `Até ${new Date(onLeave.endDate + 'T00:00:00').toLocaleDateString('pt-PT')}`,
+        badgeColor: 'bg-blue-100 text-blue-800 border-blue-300',
+        dotColor: 'bg-blue-500',
+        isOnline: false
+      };
+    }
+    return {
+      status: 'OFFLINE' as const,
+      label: 'Fora de Serviço',
+      detail: 'Offline',
+      badgeColor: 'bg-gray-100 text-gray-500 border-gray-200',
+      dotColor: 'bg-gray-300',
+      isOnline: false
+    };
+  };
 
   // Selected contact entity
   const selectedContact = useMemo(() => {
     if (!selectedContactId) return null;
     return users.find(u => u.id === selectedContactId) || null;
   }, [selectedContactId, users]);
+
+  // Selected contact live presence status
+  const selectedContactStatus = useMemo(() => {
+    if (!selectedContactId) return null;
+    return getContactTeamStatus(selectedContactId);
+  }, [selectedContactId, timeLogs, leaves, todayStr]);
 
   // Chronological messages for currently active conversation
   const activeConversationMessages = useMemo(() => {
@@ -213,7 +306,7 @@ const Messages: React.FC<MessagesProps> = ({
   }, [activeConversationMessages.length, selectedContactId, activeMode]);
 
   // Select contact & auto-mark their unread messages as read
-  const handleSelectContact = (contactId: number) => {
+  const handleSelectContact = async (contactId: number) => {
     setSelectedContactId(contactId);
 
     if (effectiveUser) {
@@ -221,17 +314,27 @@ const Messages: React.FC<MessagesProps> = ({
         m => Number(m.senderId) === contactId && Number(m.receiverId) === Number(effectiveUser.id) && !m.read
       );
 
-      unreadFromContact.forEach(msg => {
-        onMarkRead(msg.id);
-        setLiveMessages(prev => prev.map(m => m.id === msg.id ? { ...m, read: true } : m));
-        // Broadcast read receipt
-        const channel = supabase.channel('myportal-live-chat');
-        channel.send({
-          type: 'broadcast',
-          event: 'message_read',
-          payload: { messageId: msg.id }
+      if (unreadFromContact.length > 0) {
+        const unreadIds = unreadFromContact.map(m => m.id);
+
+        try {
+          await supabase.from('internal_messages').update({ read: true }).in('id', unreadIds);
+        } catch (e) {
+          console.warn('Error marking read in DB:', e);
+        }
+
+        setLiveMessages(prev => prev.map(m => unreadIds.includes(m.id) ? { ...m, read: true } : m));
+
+        unreadIds.forEach(id => onMarkReadRef.current(id));
+
+        unreadIds.forEach(id => {
+          channelRef.current?.send({
+            type: 'broadcast',
+            event: 'message_read',
+            payload: { messageId: id }
+          });
         });
-      });
+      }
     }
 
     // Auto-focus input
@@ -269,9 +372,8 @@ const Messages: React.FC<MessagesProps> = ({
     // 1. Optimistic UI update
     setLiveMessages(prev => [newChatMessage, ...prev]);
 
-    // 2. Realtime broadcast (delivers in < 50ms to the other browser/app session)
-    const channel = supabase.channel('myportal-live-chat');
-    channel.send({
+    // 2. Realtime broadcast (delivers in < 30ms over the active channel)
+    channelRef.current?.send({
       type: 'broadcast',
       event: 'chat_message',
       payload: newChatMessage
@@ -345,7 +447,8 @@ const Messages: React.FC<MessagesProps> = ({
           latestMsg,
           unreadCount,
           isManagement,
-          isSameDept
+          isSameDept,
+          teamStatus: getContactTeamStatus(contact.id)
         };
       })
       .filter(contact => {
@@ -362,6 +465,9 @@ const Messages: React.FC<MessagesProps> = ({
         if (contactFilter === 'UNREAD') return contact.unreadCount > 0;
         if (contactFilter === 'MANAGEMENT') return contact.isManagement;
         if (contactFilter === 'DEPARTMENT') return contact.isSameDept;
+        if (contactFilter === 'WORKING') return contact.teamStatus.status === 'WORKING' || contact.teamStatus.status === 'BREAK';
+        if (contactFilter === 'BREAK') return contact.teamStatus.status === 'BREAK';
+        if (contactFilter === 'ON_LEAVE') return contact.teamStatus.status === 'ON_LEAVE';
         return true;
       })
       .sort((a, b) => {
@@ -491,7 +597,7 @@ const Messages: React.FC<MessagesProps> = ({
   };
 
   return (
-    <div className="p-3 md:p-6 w-full max-w-7xl mx-auto h-[calc(100vh-4.5rem)] md:h-[calc(100vh-2rem)] flex flex-col">
+    <div className="p-3 md:p-6 w-full h-[calc(100vh-4.5rem)] md:h-[calc(100vh-2rem)] flex flex-col">
       <Header
         title="Live Chat & Comunicação"
         subtitle={effectiveUser ? `Conectado como ${effectiveUser.name}` : 'Comunicação interna em tempo real'}
@@ -584,10 +690,11 @@ const Messages: React.FC<MessagesProps> = ({
               {/* Quick filter chips */}
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
                 {[
-                  { id: 'ALL', label: 'Todos' },
-                  { id: 'UNREAD', label: 'Não Lidas' },
-                  { id: 'MANAGEMENT', label: 'RH / Gestão' },
-                  { id: 'DEPARTMENT', label: 'Meu Depto' }
+                  { id: 'ALL', label: 'Todos', icon: null },
+                  { id: 'WORKING', label: '🟢 Ao Serviço', icon: null },
+                  { id: 'ON_LEAVE', label: '🏖️ Ausentes', icon: null },
+                  { id: 'UNREAD', label: 'Não Lidas', icon: null },
+                  { id: 'DEPARTMENT', label: 'Meu Depto', icon: null }
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -634,7 +741,7 @@ const Messages: React.FC<MessagesProps> = ({
                           alt={contact.name}
                           className="w-11 h-11 rounded-full object-cover border border-gray-200"
                         />
-                        <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white" />
+                        <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${contact.teamStatus.dotColor}`} title={contact.teamStatus.label} />
                       </div>
 
                       {/* Contact Info & snippet */}
@@ -700,7 +807,7 @@ const Messages: React.FC<MessagesProps> = ({
                         alt={selectedContact.name}
                         className="w-10 h-10 rounded-full object-cover border border-gray-200"
                       />
-                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
+                      <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${selectedContactStatus?.dotColor || 'bg-gray-300'}`} />
                     </div>
 
                     <div>
@@ -714,9 +821,9 @@ const Messages: React.FC<MessagesProps> = ({
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-emerald-600 font-medium flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        <span>Online · {selectedContact.department || getRoleDisplayName(selectedContact.role)}</span>
+                      <p className={`text-xs font-medium flex items-center gap-1.5 ${selectedContactStatus?.isOnline ? 'text-emerald-600' : 'text-gray-500'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${selectedContactStatus?.dotColor || 'bg-gray-300'}`} />
+                        <span>{selectedContactStatus?.label || 'Offline'} · {selectedContact.department || getRoleDisplayName(selectedContact.role)}</span>
                       </p>
                     </div>
                   </div>

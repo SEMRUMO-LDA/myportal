@@ -66,11 +66,10 @@ const CollaboratorLayout: React.FC<CollaboratorLayoutProps> = ({ user, onLogout,
                     <NavItem to="/portal/time-bank" icon={Clock} label="Banco de Horas" />
                     <NavItem to="/portal/vacations" icon={TreePalm} label="Férias & Ausências" />
                     <NavItem to="/portal/expenses" icon={ReceiptEuro} label="Minhas Despesas" />
-                    <NavItem to="/portal/team-status" icon={Users} label="Estado da Equipa" />
 
                     <NavItem to="/rewards" icon={Gift} label="Clube de Benefícios" />
                     <NavItem to="/portal/feedback" icon={MessageSquare} label="Canal de Feedback" />
-                    <NavItem to="/portal/messages" icon={MessageSquare} label="Live Chat & Mensagens" badge={unreadMessagesCount} />
+                    <NavItem to="/portal/messages" icon={MessageSquare} label="Live Chat & Equipa" badge={unreadMessagesCount} />
                 </nav>
 
                 <div className="p-4 border-t border-gray-100 bg-gray-50">

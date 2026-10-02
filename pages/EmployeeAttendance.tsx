@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { User as UserType, TimeLog, TimeLogStatus, Leave, LeaveType, ScheduleTemplate } from '../types';
+import { User as UserType, TimeLog, TimeLogStatus, Leave, LeaveType, ScheduleTemplate, Holiday } from '../types';
 import { Calendar, Clock, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertCircle, Minus, TrendingUp, Coffee, TreePalm, Download } from 'lucide-react';
 import Header from '../components/Header';
 import { calculateVacationBalance } from '../components/VacationBalanceCard';
@@ -13,9 +13,10 @@ interface EmployeeAttendanceProps {
     leaves?: Leave[];
     leaveTypes?: LeaveType[];
     scheduleTemplates?: ScheduleTemplate[];
+    holidays?: Holiday[];
 }
 
-const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ user, logs, leaves = [], leaveTypes = [], scheduleTemplates = [] }) => {
+const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ user, logs, leaves = [], leaveTypes = [], scheduleTemplates = [], holidays = [] }) => {
     const today = new Date();
     const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
     const [selectedYear, setSelectedYear] = useState(today.getFullYear());
@@ -55,8 +56,8 @@ const EmployeeAttendance: React.FC<EmployeeAttendanceProps> = ({ user, logs, lea
 
     const vacationBalance = useMemo(() => {
         if (!user) return null;
-        return calculateVacationBalance(user, leaves, user.id, leaveTypes, scheduleTemplates);
-    }, [user, leaves, leaveTypes, scheduleTemplates]);
+        return calculateVacationBalance(user, leaves, user.id, leaveTypes, scheduleTemplates, 3, 31, holidays);
+    }, [user, leaves, leaveTypes, scheduleTemplates, holidays]);
 
     // Generate calendar days
     const calendarDays = useMemo(() => {

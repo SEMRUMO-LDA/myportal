@@ -55,6 +55,14 @@ Quando o utilizador pedir para executar uma ação, responde com a confirmação
 Usa emojis moderadamente para tornar a conversa mais amigável.`;
 
 const LeoAssistant: React.FC<LeoAssistantProps> = ({ currentUser, context = 'backoffice', onAction, analyticsContext }) => {
+    // Hide floating assistant on chat/messages pages to prevent blocking the chat UI
+    const isMessagesRoute = typeof window !== 'undefined' &&
+        (window.location.hash.includes('messages') || window.location.pathname.includes('messages'));
+
+    if (isMessagesRoute) {
+        return null;
+    }
+
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
