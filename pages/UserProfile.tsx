@@ -1013,6 +1013,17 @@ const UserProfile: React.FC<UserProfileProps> = ({ users, absences = [], roles =
 
                     <div>
                       <ToggleField
+                        label="Trabalha nos Feriados"
+                        checked={formData.attendanceConfig?.worksOnHolidays || false}
+                        onChange={(c) => setFormData(prev => ({ ...prev, attendanceConfig: { ...prev.attendanceConfig!, worksOnHolidays: c } }))}
+                      />
+                      <p className="text-[10px] text-gray-400 mt-1 ml-1">
+                        Por defeito desativado (não trabalha nos feriados). Se desativado, os feriados nacionais/locais não são descontados do saldo de férias. Se ativado, o feriado conta como dia de trabalho normal.
+                      </p>
+                    </div>
+
+                    <div>
+                      <ToggleField
                         label="Ocultar Ausências"
                         checked={formData.attendanceConfig?.hideAbsences}
                         onChange={(c) => setFormData(prev => ({ ...prev, attendanceConfig: { ...prev.attendanceConfig!, hideAbsences: c } }))}

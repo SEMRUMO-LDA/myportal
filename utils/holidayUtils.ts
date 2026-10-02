@@ -208,6 +208,7 @@ export function calculateVacationDaysDetails(
 
     const isOff = checkIsDayOff(iter, user, scheduleTemplate);
     const holidayInfo = checkIsHoliday(iter, customHolidays, user.locationId);
+    const worksOnHolidays = Boolean(user.attendanceConfig?.worksOnHolidays);
 
     if (isOff) {
       offDays++;
@@ -222,7 +223,8 @@ export function calculateVacationDaysDetails(
         holidayName: holidayInfo.name,
         isVacationDay: false
       });
-    } else if (holidayInfo.isHoliday) {
+    } else if (holidayInfo.isHoliday && !worksOnHolidays) {
+      // By default: employee does NOT work on holidays, so it is treated as a paid holiday and NOT deducted from vacation balance
       holidaysCount++;
       holidaysList.push({
         date: dateKey,
@@ -238,14 +240,21 @@ export function calculateVacationDaysDetails(
         isVacationDay: false
       });
     } else {
-      // Regular work day -> counts as a vacation day
+      // Regular work day OR employee works on holidays -> counts as a vacation day deduction
       vacationDays++;
+      if (holidayInfo.isHoliday && worksOnHolidays) {
+        holidaysList.push({
+          date: dateKey,
+          name: `${holidayInfo.name || 'Feriado'} (Dia trabalhado)`
+        });
+      }
       breakdown.push({
         date: dateKey,
         dateObj: new Date(iter),
         dayOfWeekName,
         isOff: false,
-        isHoliday: false,
+        isHoliday: holidayInfo.isHoliday,
+        holidayName: holidayInfo.name,
         isVacationDay: true
       });
     }

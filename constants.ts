@@ -26,7 +26,8 @@ export const DEFAULT_ATTENDANCE_CONFIG: AttendanceConfig = {
   blockEntry: false,
   flexibleSchedule: false,
   restrictIp: false,
-  restrictGeo: false
+  restrictGeo: false,
+  worksOnHolidays: false // ✅ Por default NÃO trabalha nos feriados (feriados não descontam férias)
 };
 
 

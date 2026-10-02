@@ -244,8 +244,13 @@ export const calculateVacationBalance = (
             const isOff = checkIsDayOff(iterDate, user, userTemplate);
             const holidayInfo = checkIsHoliday(iterDate, holidays, user.locationId);
 
-            // Vacation days are ONLY deducted if it is an actual work day (not off and not a holiday)
-            if (!isOff && !holidayInfo.isHoliday) {
+            // Vacation days are deducted only on working days:
+            // - If employee works on holidays (worksOnHolidays = true), holidays count as working days.
+            // - Default: employee does not work on holidays, so holidays are NOT deducted.
+            const isWorkingHoliday = Boolean(user.attendanceConfig?.worksOnHolidays);
+            const countsAsVacation = !isOff && (!holidayInfo.isHoliday || isWorkingHoliday);
+
+            if (countsAsVacation) {
                 if (iterDate < today) {
                     used++;
                 } else if (iterDate > today) {

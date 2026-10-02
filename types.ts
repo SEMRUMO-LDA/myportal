@@ -73,6 +73,7 @@ export interface AttendanceConfig {
   flexibleSchedule?: boolean; // Horário Flexível
   minimumDailyHours?: number; // Horas mínimas diárias (para horário flexível, default 8)
   hideAbsences?: boolean;     // Ocultar ausências (privacidade bidirecional)
+  worksOnHolidays?: boolean;  // Trabalha nos feriados (turnos, hotelaria, etc.) — se true, feriados contam como dia de trabalho no cálculo de férias
 }
 
 export interface User {
