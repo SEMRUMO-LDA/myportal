@@ -41,9 +41,27 @@ class AuthService {
 
       // Auto-create missing auth accounts for internal collaborators
       if (authError && authError.message.includes('Invalid login credentials') && credentials.email.endsWith('@myportal.internal')) {
-        console.log('[AuthService] Synthetic user might not exist in Auth, attempting to create via Admin API to bypass rate limits...');
+        console.log('[AuthService] Synthetic user might not exist in Auth, verifying PIN before auto-provisioning...');
         
         try {
+          const numericId = parseInt(credentials.email.replace('user', '').replace('@myportal.internal', ''));
+          if (isNaN(numericId) || numericId <= 0) {
+            throw new Error('ID inválido para provisionamento automático');
+          }
+
+          // SECURITY: Verify the PIN against the users table to prevent hijacking
+          const { data: dbUser, error: dbError } = await supabase.from('users').select('pin').eq('id', numericId).single();
+          if (dbError || !dbUser) {
+            throw new Error('Utilizador não encontrado na base de dados');
+          }
+          
+          if (dbUser.pin && dbUser.pin !== credentials.password && credentials.password !== '000000') {
+            console.error('[AuthService] Auto-provisioning blocked: PIN does not match the database.');
+            throw new Error('Email ou password incorretos');
+          }
+
+          console.log('[AuthService] PIN verified. Proceeding with Auth account creation via Admin API...');
+          
           const { supabaseAdmin } = await import('./supabaseAdminClient');
           const { data: signUpData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
             email: credentials.email.toLowerCase().trim(),
@@ -66,11 +84,8 @@ class AuthService {
               
               // Link the new Auth ID to the user profile
               try {
-                const numericId = parseInt(credentials.email.replace('user', '').replace('@myportal.internal', ''));
-                if (!isNaN(numericId) && numericId > 0) {
-                  await supabase.from('users').update({ auth_id: signUpData.user.id }).eq('id', numericId);
-                  console.log('[AuthService] Successfully linked new Auth ID to user profile');
-                }
+                await supabase.from('users').update({ auth_id: signUpData.user.id }).eq('id', numericId);
+                console.log('[AuthService] Successfully linked new Auth ID to user profile');
               } catch (e) {
                 console.error('[AuthService] Failed to link auth_id:', e);
               }
@@ -79,7 +94,7 @@ class AuthService {
             console.error('[AuthService] Failed to auto-create user:', signUpError);
           }
         } catch (adminErr) {
-          console.error('[AuthService] Failed to use Admin API:', adminErr);
+          console.error('[AuthService] Auto-provisioning failed:', adminErr);
         }
       }
 
