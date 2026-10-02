@@ -5,7 +5,7 @@ import { User as UserType, Company } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/authService';
-import { UserRole } from '../types/auth';
+import { UserRole, UserSession } from '../types/auth';
 import { isKioskAuthorized } from '../services/sessionService';
 import { kioskClockService } from '../services/kioskClockService';
 import PasswordRecoveryModal from '../components/PasswordRecoveryModal';
@@ -47,7 +47,7 @@ const LiveHeader = ({ isOnline }: { isOnline: boolean }) => {
         <div className="flex items-center gap-4 sm:gap-8">
           <div className={`hidden sm:flex items-center gap-2.5 text-[10px] font-black px-4 py-2 rounded-full border ${isOnline ? 'text-[#14b8a6] bg-[#042f2e] border-[#14b8a6]/20' : 'text-orange-400 bg-orange-400/10 border-orange-400/20'} shadow-inner`}>
             <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-[#14b8a6] shadow-[0_0_8px_#14b8a6]' : 'bg-orange-400'}`}></span>
-            ONLINE <span className="text-white/30 ml-1">V1.25</span>
+            ONLINE <span className="text-white/30 ml-1">V1.26</span>
           </div>
           <div className="text-white/90 text-4xl sm:text-6xl font-extralight tracking-tight tabular-nums">
             {currentTime.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
@@ -70,16 +70,32 @@ const Login: React.FC<LoginProps> = () => {
   // Kiosk Mode Detection
   const isKioskMode = location.search.includes('kiosk=true');
 
-  // Client-side cache for instant employee lookup (0ms response)
+  // Auto-purge stale employee caches and lingering locks from localStorage on mount
+  useEffect(() => {
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('myportal_emp_') || key === 'myportal_login_lock')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch {}
+  }, []);
+
+  // Client-side session cache for instant employee lookup (prevents stale PIN/lock data)
   const getCachedEmployee = (id: number) => {
     try {
       const key = `myportal_emp_${id}`;
-      const raw = sessionStorage.getItem(key) || localStorage.getItem(key);
+      const raw = sessionStorage.getItem(key);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      if (Date.now() - parsed.cachedAt < 2 * 60 * 60 * 1000) {
+      // Valid for 60 seconds within current session only
+      if (Date.now() - parsed.cachedAt < 60 * 1000) {
         return parsed;
       }
+      sessionStorage.removeItem(key);
     } catch {}
     return null;
   };
@@ -89,7 +105,6 @@ const Login: React.FC<LoginProps> = () => {
       const key = `myportal_emp_${emp.id}`;
       const data = { ...emp, cachedAt: Date.now() };
       sessionStorage.setItem(key, JSON.stringify(data));
-      localStorage.setItem(key, JSON.stringify(data));
     } catch {}
   };
 
@@ -461,6 +476,20 @@ const Login: React.FC<LoginProps> = () => {
 
               if (isKioskMode) {
                 performKioskAction(result.user);
+              } else {
+                const isAdminUser = result.user.role === UserRole.ADMIN ||
+                                   result.user.role === 'Administrador' ||
+                                   result.user.role === 'RH' ||
+                                   result.user.role === 'Diretor de Unidade' ||
+                                   result.user.role === 'Responsável de Departamento';
+
+                if (loginType === 'administrador' && isAdminUser) {
+                  navigate('/admin', { replace: true });
+                } else if (result.user.role === UserRole.AUDITOR) {
+                  navigate('/auditor', { replace: true });
+                } else {
+                  navigate('/portal', { replace: true });
+                }
               }
             }
           } else {
@@ -494,6 +523,33 @@ const Login: React.FC<LoginProps> = () => {
           } else {
             if (isKioskMode) {
               performKioskAction(result.user);
+            } else {
+              // Direct instant navigation without delay
+              const userSession: UserSession = {
+                id: String(result.user.id),
+                name: result.user.name || userEmail,
+                role: result.user.role || UserRole.COLLABORATOR,
+                permissions: [],
+                email: userEmail,
+                token: result.session?.access_token,
+                requiresNewPin: false
+              };
+
+              useAuthRef.current.login(userSession);
+
+              const isAdminUser = result.user.role === UserRole.ADMIN ||
+                                 result.user.role === 'Administrador' ||
+                                 result.user.role === 'RH' ||
+                                 result.user.role === 'Diretor de Unidade' ||
+                                 result.user.role === 'Responsável de Departamento';
+
+              if (loginType === 'administrador' && isAdminUser) {
+                navigate('/admin', { replace: true });
+              } else if (result.user.role === UserRole.AUDITOR) {
+                navigate('/auditor', { replace: true });
+              } else {
+                navigate('/portal', { replace: true });
+              }
             }
           }
         } else {
@@ -536,12 +592,27 @@ const Login: React.FC<LoginProps> = () => {
               .update({ requires_new_pin: false, must_change_password: false, pin: newPin })
               .eq('id', currentUserId);
 
+            // Clear cache for this employee so they are never prompted again
+            sessionStorage.removeItem(`myportal_emp_${currentUserId}`);
+            localStorage.removeItem(`myportal_emp_${currentUserId}`);
+
             if (isKioskMode) {
               performKioskAction({ id: currentUserId, name: currentUserName });
               // Note: performKioskAction handles resetting UI on success
             } else {
-              setEmployeeError('✅ PIN atualizado com sucesso!');
-              setTimeout(() => window.location.reload(), 2000);
+              setEmployeeError('✅ PIN atualizado com sucesso! A entrar...');
+              const userSession: UserSession = {
+                id: String(currentUserId),
+                name: currentUserName || userEmail,
+                role: localStorage.getItem('user_role') || UserRole.COLLABORATOR,
+                permissions: [],
+                email: userEmail,
+                requiresNewPin: false
+              };
+              useAuthRef.current.login(userSession);
+              setTimeout(() => {
+                navigate('/portal', { replace: true });
+              }, 600);
             }
           } catch (err) {
             setEmployeeError('Erro ao atualizar PIN.');
@@ -555,7 +626,7 @@ const Login: React.FC<LoginProps> = () => {
       }
       isSubmittingRef.current = false;
     }
-  }, [step, accessCode, pin, newPin, confirmPin, isLoggingIn, loginType, userEmail, requiresNewPin, currentUserId, isKioskMode]);
+  }, [step, accessCode, pin, newPin, confirmPin, isLoggingIn, loginType, userEmail, requiresNewPin, currentUserId, isKioskMode, navigate, currentUserName]);
 
   // Auto-submit when PIN reaches 6 digits (with isLoggingIn guard)
   useEffect(() => {

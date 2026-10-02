@@ -22,7 +22,7 @@ class VersionService {
       const response = await fetch(versionUrl, { cache: 'no-cache' }).catch(() => null);
       if (response && response.ok) {
         const data = await response.json();
-        this.version = data.version || '2.56.0';
+        this.version = data.version || '1.26';
         this.buildNumber = data.buildNumber || this.generateBuildNumber();
         this.buildDate = data.buildDate || new Date().toISOString();
       } else {
@@ -52,14 +52,14 @@ class VersionService {
    * Get formatted version string
    */
   getVersionString(): string {
-    return 'V1.25';
+    return 'V1.26';
   }
 
   /**
    * Get sequential build number / version tag for display
    */
   getBuildSequence(): string {
-    return '1.25';
+    return '1.26';
   }
 
   /**

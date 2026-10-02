@@ -10,7 +10,7 @@ const versionPath = 'version.json';
 // Create default version file if it doesn't exist
 if (!existsSync(versionPath)) {
   const defaultVersion = {
-    version: "2.56.0",
+    version: "1.26",
     buildNumber: 0,
     buildDate: new Date().toISOString()
   };

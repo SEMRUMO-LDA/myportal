@@ -1,7 +1,7 @@
 {
   "name": "semrumo-my-profile",
   "private": true,
-  "version": "2.56.0",
+  "version": "1.26.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

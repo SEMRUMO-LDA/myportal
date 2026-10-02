@@ -21,31 +21,54 @@ async function resolveUserSession(
     email: string | undefined,
     accessToken: string
 ): Promise<UserSession | null> {
-    // SECURITY FIX: No more ADMIN fallback. If we can't resolve, return null.
     if (!email) {
         console.error('[AuthContext] Cannot resolve session: no email provided');
         return null;
     }
 
     try {
-        // Add timeout to prevent hanging
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
+        const timeout = setTimeout(() => controller.abort(), 4000);
 
-        let query = supabase.from('users').select('id, role, name');
-        
-        if (email.endsWith('@myportal.internal')) {
-            const numericId = email.replace('user', '').replace('@myportal.internal', '');
-            query = query.eq('id', numericId);
-        } else {
-            query = query.eq('email', email);
+        let numericId: number | null = null;
+        if (email.endsWith('@semrumo.eu') && email.startsWith('user')) {
+            numericId = parseInt(email.replace('user', '').replace('@semrumo.eu', ''));
+        } else if (email.endsWith('@myportal.internal') && email.startsWith('user')) {
+            numericId = parseInt(email.replace('user', '').replace('@myportal.internal', ''));
         }
 
-        const { data: userData, error } = await query.single();
+        let query = supabase.from('users').select('id, role, name, email');
+        if (numericId && !isNaN(numericId) && numericId > 0) {
+            query = query.eq('id', numericId);
+        } else {
+            query = query.eq('email', email.toLowerCase().trim());
+        }
+
+        let { data: userData, error } = await query.maybeSingle();
+
+        // Secondary fallback by authId if email didn't match
+        if (!userData && authId) {
+            const { data: authUserData } = await supabase.from('users').select('id, role, name, email').eq('auth_id', authId).maybeSingle();
+            if (authUserData) {
+                userData = authUserData;
+                error = null;
+            }
+        }
 
         clearTimeout(timeout);
 
-        if (error || !userData) {
+        if (!userData) {
+            // Check resilient session backup from localStorage
+            try {
+                const backup = localStorage.getItem('myportal_last_valid_session');
+                if (backup) {
+                    const parsed = JSON.parse(backup);
+                    if (parsed && (parsed.email === email || parsed.id)) {
+                        console.log('[AuthContext] Restored user from resilient session backup');
+                        return { ...parsed, token: accessToken };
+                    }
+                }
+            } catch {}
             console.error('[AuthContext] User not found in DB for email:', email, error?.message);
             return null;
         }
@@ -61,22 +84,23 @@ async function resolveUserSession(
             role = UserRole.COLLABORATOR;
         }
 
-        // Admin gets all permissions, others get from DB
+        // Admin gets all permissions, others get from DB (non-blocking with 1.2s timeout)
         let permissions: string[] = ['*'];
-        if (role !== UserRole.ADMIN) {
+        if (role !== UserRole.ADMIN && userData.role) {
             try {
-                const perms = await permissionService.getUserPermissions(userData.role);
-                if (perms.length > 0) permissions = perms;
+                const permsPromise = permissionService.getUserPermissions(userData.role);
+                const timeoutPromise = new Promise<string[]>((res) => setTimeout(() => res([]), 1200));
+                const perms = await Promise.race([permsPromise, timeoutPromise]);
+                if (perms && perms.length > 0) permissions = perms;
             } catch {
                 permissions = [];
             }
         }
 
         // CRITICAL: Ensure we have a numeric ID (BigInt) for the database
-        const numericId = Number(userData.id);
+        const finalNumericId = Number(userData.id);
 
-        // VALIDATION: userData.id from DB must ALWAYS be numeric (BigInt)
-        if (isNaN(numericId) || numericId <= 0) {
+        if (isNaN(finalNumericId) || finalNumericId <= 0) {
             console.error(`[AuthContext] CRITICAL: Invalid user ID from database!`, {
                 rawId: userData.id,
                 email,
@@ -85,14 +109,21 @@ async function resolveUserSession(
             return null;
         }
 
-        return {
-            id: String(numericId), // Store as string for consistency
+        const session: UserSession = {
+            id: String(finalNumericId),
             name: userData.name || email,
             role,
             permissions,
             email: email,
             token: accessToken
         };
+
+        // Cache last valid session for offline/resilience
+        try {
+            localStorage.setItem('myportal_last_valid_session', JSON.stringify(session));
+        } catch {}
+
+        return session;
     } catch (err) {
         console.error('[AuthContext] resolveUserSession error:', err);
         return null;
@@ -135,10 +166,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     if (userSession) {
                         setUser(userSession);
                     } else {
-                        // Could not resolve user — don't grant ADMIN, show error state
-                        console.error('[AuthContext] Failed to resolve user session, signing out');
-                        setUser(null);
-                        // Don't auto sign-out here to avoid loops, let the UI handle it
+                        // Could not resolve user from DB query — preserve existing user session if present
+                        console.warn('[AuthContext] Failed to re-resolve user session, keeping existing session if valid');
+                        setUser(prev => prev || null);
                     }
                     setIsLoading(false);
                 }
@@ -158,6 +188,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const login = (session: UserSession) => {
         setUser(session);
+        setIsLoading(false);
+        try {
+            localStorage.setItem('myportal_last_valid_session', JSON.stringify(session));
+        } catch {}
     };
 
     const logout = async () => {
