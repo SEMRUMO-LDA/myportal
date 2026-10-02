@@ -15,8 +15,8 @@ interface TeamCalendarProps {
     scheduleTemplates: ScheduleTemplate[];
     locations: Location[];
     departments: Department[];
-    onAddLeave: (leave: Omit<Leave, 'id' | 'createdAt' | 'updatedAt'>) => void;
-    onUpdateLeave?: (leave: Leave) => void;
+    onAddLeave: (leave: Omit<Leave, 'id' | 'createdAt' | 'updatedAt'>) => Promise<boolean | void> | void;
+    onUpdateLeave?: (leave: Leave) => Promise<boolean | void> | void;
     currentUser: User | null;
     kioskMode?: boolean;
 }
@@ -186,9 +186,9 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ users, leaves, leaveTypes, 
         setSelectedLeave(null);
     };
 
-    const handleSaveLeave = () => {
+    const handleSaveLeave = async () => {
         if (!selectedUser || !selectedLeaveType || !selectedDates.start) return;
-        onAddLeave({
+        const res = await onAddLeave({
             userId: selectedUser.id,
             leaveTypeId: selectedLeaveType,
             startDate: selectedDates.start,
@@ -197,7 +197,9 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ users, leaves, leaveTypes, 
             notes: leaveNotes,
             backupUserId: selectedBackupUserId || undefined,
         });
-        setShowAddModal(false);
+        if (res !== false) {
+            setShowAddModal(false);
+        }
     };
 
     // Calculate vacation balance for a user

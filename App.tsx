@@ -99,6 +99,27 @@ const PageLoader = () => {
   );
 };
 
+// Tracks columns that do not exist in the Supabase 'leaves' table to prevent PGRST204 errors
+const unsupportedLeavesColumns = new Set<string>([
+  'approval_step',
+  'manager_approval_status',
+  'hr_approval_status',
+  'is_working_absence',
+  'backup_user_id',
+]);
+
+const extractMissingColumn = (error: any): string | null => {
+  if (!error) return null;
+  const msg = error.message || (typeof error === 'string' ? error : '');
+  const postgrestMatch = msg.match(/Could not find the ['"](\w+)['"] column/i);
+  if (postgrestMatch) return postgrestMatch[1];
+  const pgMatch = msg.match(/column ['"]?(\w+)['"]? does not exist/i);
+  if (pgMatch) return pgMatch[1];
+  const fallbackMatch = msg.match(/column ['"](\w+)['"]/i) || msg.match(/['"](\w+)['"]\s+column/i);
+  if (fallbackMatch) return fallbackMatch[1];
+  return null;
+};
+
 // Layout Wrapper for Admin to handle Sidebar Context
 const AdminLayout = ({
   onLogout,
@@ -1678,23 +1699,42 @@ function App() {
 
     // DB Insert into 'leaves' (with resiliency for missing columns)
     let payload = { ...dbLeave };
+    for (const col of unsupportedLeavesColumns) {
+      delete payload[col];
+    }
     let success = false;
     let finalData = null;
+    let attempts = 0;
 
-    while (!success) {
+    while (!success && attempts < 10) {
+      attempts++;
       const { data, error } = await supabase.from('leaves').insert(payload).select().single();
       if (!error && data) {
         success = true;
         finalData = data;
-      } else if (error && error.message?.includes('column') && error.message?.includes('does not exist')) {
-        const match = error.message.match(/(\w+)/);
-        const col = match ? match[1] : null;
+      } else if (error && (
+        error.code === 'PGRST204' ||
+        error.message?.includes('column') ||
+        error.message?.includes('schema cache') ||
+        error.message?.includes('does not exist')
+      )) {
+        const col = extractMissingColumn(error);
         if (col && col in payload) {
           console.warn(`[Resiliency] Stripping unsupported column "${col}" from leaves table`);
+          unsupportedLeavesColumns.add(col);
           const { [col]: _, ...rest } = payload as any;
           payload = rest;
         } else {
-          break; // Unknown column or match failed
+          const optionalCols = ['approval_step', 'manager_approval_status', 'hr_approval_status', 'is_working_absence', 'backup_user_id'];
+          let strippedAny = false;
+          for (const optCol of optionalCols) {
+            if (optCol in payload) {
+              unsupportedLeavesColumns.add(optCol);
+              delete (payload as any)[optCol];
+              strippedAny = true;
+            }
+          }
+          if (!strippedAny) break;
         }
       } else {
         console.error("Error adding leave:", error);
@@ -3521,7 +3561,7 @@ function App() {
   };
 
   // --- LEAVE HANDLERS ---
-  const handleAddLeave = async (leave: Omit<Leave, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleAddLeave = async (leave: Omit<Leave, 'id' | 'createdAt' | 'updatedAt'>): Promise<boolean> => {
     // Map status to database format (lowercase)
     const statusMap: Record<string, string> = {
       'PENDING': 'pending',
@@ -3529,13 +3569,36 @@ function App() {
       'REJECTED': 'rejected'
     };
 
+    // Calculate days if not provided
+    let leaveDays = (leave as any).days;
+    if (!leaveDays && leave.startDate && leave.endDate) {
+      const s = new Date(leave.startDate);
+      const e = new Date(leave.endDate);
+      const diffTime = Math.abs(e.getTime() - s.getTime());
+      leaveDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    }
+
+    // Preserve substitute in notes if backupUserId is set
+    let notes = leave.notes || '';
+    if (leave.backupUserId) {
+      const backupUser = users.find((u: User) => u.id === leave.backupUserId);
+      const subName = backupUser?.name || `ID ${leave.backupUserId}`;
+      if (!notes.includes('Substituto:')) {
+        notes = notes ? `${notes} (Substituto: ${subName})` : `(Substituto: ${subName})`;
+      }
+    }
+
+    const leaveTypeName = leaveTypes.find(lt => lt.id === leave.leaveTypeId)?.name || (leave as any).leaveType;
+
     const dbLeave: Record<string, any> = {
       user_id: leave.userId,
       leave_type_id: leave.leaveTypeId,
+      leave_type: leaveTypeName || null,
       start_date: leave.startDate,
       end_date: leave.endDate,
+      days: leaveDays || 1,
       status: statusMap[leave.status] || leave.status.toLowerCase(),
-      notes: leave.notes || null,
+      notes: notes || null,
     };
     // Optional approval workflow columns (may not exist in all DB setups)
     if (leave.approvalStep) dbLeave.approval_step = leave.approvalStep;
@@ -3547,37 +3610,61 @@ function App() {
 
     // Resilient Insert
     let payload = { ...dbLeave };
+    for (const col of unsupportedLeavesColumns) {
+      delete payload[col];
+    }
+
     let success = false;
     let finalData = null;
+    let attempts = 0;
 
-    while (!success) {
+    while (!success && attempts < 10) {
+      attempts++;
       const { data, error } = await supabase.from('leaves').insert(payload).select().single();
       if (!error && data) {
         success = true;
         finalData = data;
-      } else if (error && error.message?.includes('column') && error.message?.includes('does not exist')) {
-        const match = error.message.match(/(\w+)/);
-        const col = match ? match[1] : null;
+      } else if (error && (
+        error.code === 'PGRST204' ||
+        error.message?.includes('column') ||
+        error.message?.includes('schema cache') ||
+        error.message?.includes('does not exist')
+      )) {
+        const col = extractMissingColumn(error);
         if (col && col in payload) {
           console.warn(`[Resiliency] Stripping unsupported column "${col}" from leaves table`);
+          unsupportedLeavesColumns.add(col);
           const { [col]: _, ...rest } = payload as any;
           payload = rest;
         } else {
-          break;
+          // If we couldn't match a specific column, strip all known optional extended columns
+          const optionalCols = ['approval_step', 'manager_approval_status', 'hr_approval_status', 'is_working_absence', 'backup_user_id'];
+          let strippedAny = false;
+          for (const optCol of optionalCols) {
+            if (optCol in payload) {
+              unsupportedLeavesColumns.add(optCol);
+              delete (payload as any)[optCol];
+              strippedAny = true;
+            }
+          }
+          if (!strippedAny) {
+            console.error("DB Insert failed: unresolvable column error", error);
+            break;
+          }
         }
       } else {
-        console.warn("DB Insert failed", error);
+        console.error("DB Insert failed", error);
         break;
       }
     }
 
     if (!finalData) {
       addToast('error', 'Erro ao criar ausência.');
-      return;
+      return false;
     }
     const data = finalData;
-    setLeaves(prev => [{ ...leave, id: data.id, createdAt: data.created_at } as Leave, ...prev]);
-    addToast('success', 'Ausência registada.');
+    setLeaves(prev => [{ ...leave, id: data.id, createdAt: data.created_at, days: data.days || leaveDays, notes } as Leave, ...prev]);
+    addToast('success', 'Ausência registada com sucesso.');
 
     // Notify admins about new leave request
     const adminIds = users.filter((u: User) => u.role === 'ADMIN' || u.role === 'Administrador').map((u: User) => u.id);
@@ -3592,9 +3679,11 @@ function App() {
       referenceTable: 'leaves',
       actionUrl: '/admin/absences',
     });
+
+    return true;
   };
 
-  const handleUpdateLeave = async (leave: Leave) => {
+  const handleUpdateLeave = async (leave: Leave): Promise<boolean> => {
     // Map status to database format (lowercase)
     const statusMap: Record<string, string> = {
       'PENDING': 'pending',
@@ -3621,31 +3710,59 @@ function App() {
 
     if (!leave.id) {
       console.error("Update failed: No ID provided for leave", leave);
-      return;
+      return false;
     }
 
     // Resilient Update
     let payload = { ...dbLeave };
+    for (const col of unsupportedLeavesColumns) {
+      delete payload[col];
+    }
+
     let success = false;
-    while (!success) {
+    let attempts = 0;
+    while (!success && attempts < 10) {
+      attempts++;
       const { error } = await supabase.from('leaves').update(payload).eq('id', leave.id);
       if (!error) {
         success = true;
-      } else if (error && error.message?.includes('column') && error.message?.includes('does not exist')) {
-        const match = error.message.match(/(\w+)/);
-        const col = match ? match[1] : null;
+      } else if (error && (
+        error.code === 'PGRST204' ||
+        error.message?.includes('column') ||
+        error.message?.includes('schema cache') ||
+        error.message?.includes('does not exist')
+      )) {
+        const col = extractMissingColumn(error);
         if (col && col in payload) {
           console.warn(`[Resiliency] Stripping unsupported column "${col}" from leaves table update`);
+          unsupportedLeavesColumns.add(col);
           const { [col]: _, ...rest } = payload as any;
           payload = rest;
         } else {
-          break;
+          const optionalCols = ['approval_step', 'manager_approval_status', 'hr_approval_status', 'is_working_absence', 'backup_user_id'];
+          let strippedAny = false;
+          for (const optCol of optionalCols) {
+            if (optCol in payload) {
+              unsupportedLeavesColumns.add(optCol);
+              delete (payload as any)[optCol];
+              strippedAny = true;
+            }
+          }
+          if (!strippedAny) {
+            console.error("DB Update failed: unresolvable column error", error);
+            break;
+          }
         }
       } else {
         console.error("DB Update failed:", error.message, error.details, error.hint, "Payload:", payload);
         addToast('error', `Erro ao atualizar ausência: ${error.message || 'erro desconhecido'}`);
-        return;
+        return false;
       }
+    }
+
+    if (!success) {
+      addToast('error', 'Erro ao atualizar ausência.');
+      return false;
     }
 
     setLeaves(prev => prev.map(l => l.id === leave.id ? leave : l));
@@ -3664,12 +3781,15 @@ function App() {
         type: leave.status === 'APPROVED' ? 'LEAVE_APPROVED' : 'LEAVE_REJECTED',
         title: `Pedido de Ausência ${statusPt.charAt(0).toUpperCase() + statusPt.slice(1)}`,
         description: `O seu pedido de ausência foi ${statusPt}.`,
-        severity: leave.status === 'APPROVED' ? 'success' : 'error',
+        severity: leave.status === 'APPROVED' ? 'success' : 'danger',
+        actionType: 'VIEW_LEAVE',
         referenceId: leave.id,
         referenceTable: 'leaves',
-        actionUrl: '/portal/profile',
+        actionUrl: '/portal/team-calendar',
       });
     }
+
+    return true;
   };
 
 

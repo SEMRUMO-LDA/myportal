@@ -14,7 +14,7 @@ interface RequestLeaveProps {
     users: User[];
     leaveTypes: LeaveType[];
     leaves: Leave[];
-    onAddLeave: (leave: Omit<Leave, 'id' | 'createdAt' | 'updatedAt'>) => void;
+    onAddLeave: (leave: Omit<Leave, 'id' | 'createdAt' | 'updatedAt'>) => Promise<boolean | void> | void;
     scheduleTemplates?: ScheduleTemplate[];
     kioskMode?: boolean;
 }
@@ -108,7 +108,7 @@ const RequestLeave: React.FC<RequestLeaveProps> = ({ user, users, leaveTypes, le
         setIsSubmitting(true);
 
         try {
-            onAddLeave({
+            const success = await onAddLeave({
                 userId: user.id,
                 leaveTypeId: selectedLeaveType,
                 startDate,
@@ -118,10 +118,13 @@ const RequestLeave: React.FC<RequestLeaveProps> = ({ user, users, leaveTypes, le
                 backupUserId: backupUserId || undefined,
             });
 
-            addToast('success', 'Pedido de ausência enviado com sucesso!');
+            if (success === false) {
+                // Error toast was already presented by handleAddLeave
+                return;
+            }
 
-            // Wait a bit before navigating back
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Wait a moment for UX feedback before navigating back
+            await new Promise(resolve => setTimeout(resolve, 800));
 
             if (kioskMode) {
                 navigate('/portal');
